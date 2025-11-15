@@ -40,7 +40,7 @@ export default function Home() {
       <div className="w-full bg-white dark:bg-gray-800 shadow-xl border-b-4 border-blue-600">
         <div className="w-full px-6 py-8 flex items-center justify-center">
           <img 
-            src="/logo.png" 
+            src="public/logo.png" 
             alt="The Sim Racing Stewards" 
             className="w-full max-w-5xl h-auto object-contain drop-shadow-lg"
             onError={(e) => {
@@ -52,7 +52,7 @@ export default function Home() {
             className="hidden w-full max-w-5xl h-40 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl items-center justify-center text-white font-bold text-4xl shadow-2xl"
             style={{ display: 'none' }}
           >
-            The Sim Racing Stewards
+            The Sim Racing Stewards - V2
           </div>
         </div>
       </div>
