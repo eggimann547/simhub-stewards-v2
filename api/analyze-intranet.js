@@ -72,16 +72,14 @@ export async function POST(req) {
 
     const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
 
-    // 3. PROMPT – FRIENDLY, UNBIASED, COMMUNITY SLANG (APPROVED ONLY)
+    // 3. PROMPT – FRIENDLY, SLANG-CONTROLLED, NO LAP/TIME
     const approvedSlang = `
-COMMUNITY LANGUAGE (use 1–2 naturally in explanation/tips):
+COMMUNITY LANGUAGE (use 1–2 naturally):
 - "turned in like you weren't even there"
 - "used you as a guardrail"
 - "divebombed the chicane"
 - "locked up and collected"
 - "held your line like a champ"
-Tone: Friendly, neutral, educational — like a helpful r/simracingstewards mod.
-No drama, no rage, no sarcasm. Just clear, fair, and relatable.
 `;
 
     const prompt = `You are a friendly, experienced sim racing steward helping drivers improve.
