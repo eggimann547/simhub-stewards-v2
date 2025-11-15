@@ -11,7 +11,7 @@ export async function POST(req) {
   try {
     const { url } = schema.parse(await req.json());
 
-    // 1. YouTube Title & Incident Type
+    // 1. Extract YouTube Title & Incident Type
     const videoId = url.match(/v=([0-9A-Za-z_-]{11})/)?.[1] || '';
     let title = 'unknown incident';
     let incidentType = 'general contact';
@@ -34,9 +34,9 @@ export async function POST(req) {
       }
     }
 
-    // 2. Dataset Search & Stats
+    // 2. Load & Search Dataset
     let matches = [];
-    let datasetAvgFaultA = 81;
+    let datasetAvgFaultA = 81; // fallback
     try {
       const res = await fetch('/simracingstewards_28k.csv', { signal: controller.signal });
       if (res.ok) {
@@ -55,6 +55,7 @@ export async function POST(req) {
         matches.sort((a, b) => b.score - a.score);
         matches = matches.slice(0, 5);
 
+        // Calculate real average fault % for Car A
         const validFaults = matches
           .map(m => parseFloat(m.fault_pct_driver_a || 0))
           .filter(f => !isNaN(f) && f >= 0);
@@ -72,16 +73,14 @@ export async function POST(req) {
 
     const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
 
-    // 3. PROMPT – FRIENDLY, UNBIASED, COMMUNITY SLANG (APPROVED ONLY)
-    const approvedSlang = `
-COMMUNITY LANGUAGE (use 1–2 naturally in explanation/tips):
+    // 3. PROMPT – FRIENDLY, NEUTRAL, EDUCATIONAL + COMMUNITY LANGUAGE
+    const communityLanguage = `
+COMMUNITY LANGUAGE (use 1–2 naturally, keep it positive):
 - "turned in like you weren't even there"
 - "used you as a guardrail"
 - "divebombed the chicane"
 - "locked up and collected"
 - "held your line like a champ"
-Tone: Friendly, neutral, educational — like a helpful r/simracingstewards mod.
-No drama, no rage, no sarcasm. Just clear, fair, and relatable.
 `;
 
     const prompt = `You are a friendly, experienced sim racing steward helping drivers improve.
@@ -106,12 +105,12 @@ ANALYSIS:
 1. Quote rule(s).
 2. Fault % (sum 100%, dataset-guided).
 3. Car A = overtaker/inside, Car B = defender/outside.
-4. Explain in 2–3 short sentences — use 1–2 approved slang terms naturally.
+4. Explain in 2–3 short sentences — use 1–2 community phrases naturally.
 5. One clear overtaking tip for Car A.
 6. One clear defense tip for Car B.
 7. Spotter callouts.
 
-${approvedSlang}
+${communityLanguage}
 
 CHECK IF RELEVANT:
 - Was there overlap at apex?
@@ -121,7 +120,7 @@ CHECK IF RELEVANT:
 OUTPUT ONLY VALID JSON:
 {
   "rule": "iRacing 8.1.1.8",
-  "fault": { "Car A": "82%", "Car B": "18%" },
+  "fault": { "Car A": "78%", "Car B": "22%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
   "explanation": "Car A turned in like you weren't even there, causing contact at the apex.\\n\\nTip A: Wait for overlap before committing.\\nTip B: Hold your line like a champ on 'car inside!'",
   "overtake_tip": "Build overlap before turning in",
@@ -144,8 +143,8 @@ OUTPUT ONLY VALID JSON:
       body: JSON.stringify({
         model: 'grok-3',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 750,
-        temperature: 0.35,
+        max_tokens: 700,
+        temperature: 0.3,
         top_p: 0.8
       }),
       signal: controller.signal
@@ -165,7 +164,7 @@ OUTPUT ONLY VALID JSON:
         "Car B": `${100 - datasetAvgFaultA}%` 
       },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Contact occurred due to late move.\\n\\nTip A: Brake earlier for safer entry.\\nTip B: Hold racing line firmly.`,
+      explanation: `Contact occurred during overtake.\\n\\nTip A: Brake earlier for safer entry.\\nTip B: Hold racing line firmly.`,
       overtake_tip: "Wait for overlap at apex",
       defend_tip: "Stay predictable on defense",
       spotter_advice: {
