@@ -73,20 +73,33 @@ export async function POST(req) {
 
     const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
 
-    // 3. ENHANCED PROMPT — WITH STATISTICAL PRIOR
-    const prompt = `You are a professional sim racing steward (iRacing, ACC, F1 Esports official).
+    // 3. ENHANCED PROMPT — DATA-DRIVEN + SIM RACING SLANG
+    const slangExamples = `
+SIM RACING LINGO (use 2-3 naturally in explanation/tips like r/simracingstewards comments):
+- Divebomb/Dove in late/Pulled the pin
+- Turned in like you weren't there/Turned across your nose
+- Used you as a guardrail/Collected you
+- Locked up the brakes/Smoke show
+- Held your line like a champ/Straight-lined it
+- Chicane police/Bus stop blues (for chicanes)
+- Rear-ended/T-boned meat
+- No overlap at apex/Off-throttle dive
+Tone: Neutral but sounds like a salty steward - conversational, no BS.
+`;
+
+    const prompt = `You are a grizzled sim racing steward from r/simracingstewards (10+ years iRacing/ACC).
 
 INCIDENT:
 - Video: ${url}
 - Title: "${title}"
 - Type: ${incidentType}
 
-DATASET PRIOR (USE AS BASELINE):
+DATASET PRIOR (BASELINE FAULT %):
 ${datasetNote}
-→ Start fault % near ${datasetAvgFaultA}% Car A / ${100 - datasetAvgFaultA}% Car B
-→ Adjust ±20% max based on video logic only if clearly different
+→ Start fault split at ${datasetAvgFaultA}% Car A / ${100 - datasetAvgFaultA}% Car B
+→ Adjust ±20% ONLY if video clearly shows otherwise. MUST sum to 100%.
 
-RULES (Quote 1–2 most relevant):
+RULES (Quote 1-2 relevant):
 1. iRacing 8.1.1.8: "A driver may not gain an advantage by leaving the racing surface or racing below the white line."
 2. SCCA Appendix P: "Overtaker must be alongside at apex. One safe move only."
 3. BMW SIM GT: "Predictable lines. Yield on rejoins."
@@ -94,35 +107,33 @@ RULES (Quote 1–2 most relevant):
 
 ANALYSIS:
 1. Quote rule(s).
-2. Assign fault % → **MUST SUM TO 100%** → Start from dataset prior.
-3. Identify: Car A (overtaker), Car B (defender).
-4. Explain in 2–3 short sentences.
-5. One overtaking tip for Car A.
-6. One defense tip for Car B.
-7. Spotter callouts.
+2. Fault % (sum 100%, dataset-based).
+3. Car A = overtaker/inside, Car B = defender/outside.
+4. Explain in 2-3 sentences USING SLANG naturally.
+5. ONE overtaking tip for A (slangy/actionable).
+6. ONE defense tip for B (slangy/actionable).
+7. Spotter calls.
 
-CHECK THESE IF RELEVANT:
-- Was overtaker alongside at apex?
-- Did defender weave under braking?
-- Did anyone cut apex/exit and gain time?
-- Was rejoin safe and predictable?
+${slangExamples}
 
-OUTPUT ONLY VALID JSON:
+CHECK:
+- Overlap at apex? Defender weave? Track cut for time? Safe rejoin?
+
+OUTPUT ONLY JSON:
 {
   "rule": "iRacing 8.1.1.8",
-  "fault": { "Car A": "72%", "Car B": "28%" },
-  "car_identification": "Car A: Overtaker. Car B: Defender.",
-  "explanation": "Car A attempted divebomb without overlap at apex.\\n\\nTip A: Wait for 50% overlap before turn-in.\\nTip B: Hold line on 'car inside!' call.",
-  "overtake_tip": "Establish overlap before apex",
-  "defend_tip": "Stay predictable under braking",
+  "fault": { "Car A": "78%", "Car B": "22%" },
+  "car_identification": "Car A: Divebomber. Car B: Line holder.",
+  "explanation": "Car A dove in late, turned across B's nose like they weren't there - classic no-overlap meat at apex.\\n\\nTip A: Don't pull the pin without side-by-side.\\nTip B: Hold that line like a champ on spotter 'inside!'",
+  "overtake_tip": "Wait for real overlap, no off-throttle dives",
+  "defend_tip": "Straight-line it, don't squeeze the meat",
   "spotter_advice": {
-    "overtaker": "Wait for 'clear inside' call",
-    "defender": "Call 'car inside!' early"
+    "overtaker": "Spotter: 'Clear inside or clear off!'",
+    "defender": "Spotter: 'Car inside - hold firm!'"
   },
   "confidence": "${confidence}",
   "flags": ["divebomb", "no_overlap"]
-}
-`;
+}`;
 
     // 4. Call Grok
     const grok = await fetch('https://api.x.ai/v1/chat/completions', {
@@ -134,9 +145,9 @@ OUTPUT ONLY VALID JSON:
       body: JSON.stringify({
         model: 'grok-3',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 700,
-        temperature: 0.3,
-        top_p: 0.8
+        max_tokens: 800,
+        temperature: 0.4,  // Slightly higher for natural slang flow
+        top_p: 0.85
       }),
       signal: controller.signal
     });
@@ -147,31 +158,31 @@ OUTPUT ONLY VALID JSON:
     const data = await grok.json();
     const raw = data.choices?.[0]?.message?.content?.trim() || '';
 
-    // 5. Parse with Dataset Fallback
+    // 5. Parse with Fallbacks
     let verdict = {
-      rule: `Possible ${incidentType} violation`,
+      rule: `${incidentType.charAt(0).toUpperCase() + incidentType.slice(1)} violation`,
       fault: { 
         "Car A": `${datasetAvgFaultA}%`, 
         "Car B": `${100 - datasetAvgFaultA}%` 
       },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Incident analyzed using dataset prior.\\n\\nTip A: Brake earlier for safer overlap.\\nTip B: Hold racing line firmly.`,
-      overtake_tip: "Wait for overlap at apex",
-      defend_tip: "Stay predictable on defense",
+      explanation: `Analyzed via dataset - ${incidentType} style contact.\\n\\nTip A: Build real overlap.\\nTip B: Don't move under braking.`,
+      overtake_tip: "Earn the apex with overlap",
+      defend_tip: "Predictable line, no gifts",
       spotter_advice: {
-        overtaker: "Wait for 'clear inside'",
-        defender: "Call 'car inside!' early"
+        overtaker: "Spotter: 'He's holding middle!'",
+        defender: "Spotter: 'Inside threat!'"
       },
       confidence,
-      flags: [incidentType.replace(' ', '_')]
+      flags: [incidentType.replace(/ /g, '_')]
     };
 
     try {
       const parsed = JSON.parse(raw);
 
-      // Validate fault sum
-      const a = parseInt(parsed.fault?.["Car A"] || '0');
-      const b = parseInt(parsed.fault?.["Car B"] || '0');
+      // Fault sum validation
+      const a = parseInt((parsed.fault?.["Car A"] || '').replace('%', ''));
+      const b = parseInt((parsed.fault?.["Car B"] || '').replace('%', ''));
       const sumValid = !isNaN(a) && !isNaN(b) && a + b === 100;
 
       verdict = {
@@ -186,7 +197,7 @@ OUTPUT ONLY VALID JSON:
         flags: Array.isArray(parsed.flags) ? parsed.flags : verdict.flags
       };
     } catch (e) {
-      console.log('JSON parse failed, using dataset prior:', e);
+      console.log('JSON parse failed, dataset fallback:', e);
     }
 
     return Response.json({ verdict, matches });
