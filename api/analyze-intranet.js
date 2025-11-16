@@ -65,7 +65,7 @@ export async function POST(req) {
           .filter(f => !isNaN(f) && f >= 0);
         datasetAvgFaultA = validFaults.length > 0
           ? Math.round(validFaults.reduce((a, b) => a + b, 0) / validFaults.length)
-          : isNASCAR ? 65 : 81;  // NASCAR default: more shared fault
+          : isNASCAR ? 65 : 81;
       }
     } catch (e) {
       console.log('CSV load failed:', e);
@@ -77,7 +77,7 @@ export async function POST(req) {
 
     const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
 
-    // 3. NASCAR-SPECIFIC RULES + PRIOR
+    // 3. RULES (NASCAR or General)
     const generalRules = `
 1. iRacing 8.1.1.8: "A driver may not gain an advantage by leaving the racing surface or racing below the white line."
 2. SCCA Appendix P: "Overtaker must be alongside at apex. One safe move only."
@@ -90,14 +90,15 @@ export async function POST(req) {
 
     const rulesSection = isNASCAR ? nascarRules : generalRules;
 
-    const prompt = `You are a neutral, data-driven sim racing steward.
+    // 4. PROMPT – CLEAN, FORMAL, DATA-DRIVEN
+    const prompt = `You are a professional, neutral sim racing steward.
 
 ### DATASET PRIOR (MUST USE AS BASELINE)
 ${datasetNote}
 **FAULT BASELINE: ${datasetAvgFaultA}% Car A / ${100 - datasetAvgFaultA}% Car B**
 → Adjust ±20% max only if video clearly contradicts.
 → Must sum to 100%.
-${isNASCAR ? 'NASCAR: Minor pack contact often shared fault ("rubbing is racing").' : ''}
+${isNASCAR ? 'NASCAR: Minor contact in pack racing often shared ("rubbing is racing").' : ''}
 
 INCIDENT:
 - Video: ${url}
@@ -107,23 +108,23 @@ INCIDENT:
 RULES (Quote 1–2 most relevant):
 ${rulesSection}
 
-OUTPUT ONLY VALID JSON (NO EXTRA TEXT):
+OUTPUT ONLY VALID JSON (NO EXTRA TEXT, NO SLANG):
 {
-  "rule": "NASCAR 10.8.3",
-  "fault": { "Car A": "65%", "Car B": "35%" },
+  "rule": "iRacing 8.1.1.8",
+  "fault": { "Car A": "78%", "Car B": "22%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
-  "explanation": "Brief 2–3 sentence summary.",
-  "overtake_tip": "One clear tip for Car A.",
-  "defend_tip": "One clear tip for Car B.",
+  "explanation": "Car A initiated a late overtaking maneuver without sufficient overlap at the apex, resulting in contact. Car B maintained a consistent racing line.",
+  "overtake_tip": "Establish at least 50% overlap before committing to the inside line.",
+  "defend_tip": "Maintain a predictable line when a spotter calls 'car inside'.",
   "spotter_advice": {
-    "overtaker": "Spotter call for overtaker.",
-    "defender": "Spotter call for defender."
+    "overtaker": "Wait for 'clear inside' before turning in.",
+    "defender": "Call 'car inside!' early and hold your line."
   },
   "confidence": "${confidence}",
-  "flags": ["divebomb"]
+  "flags": ["divebomb", "no_overlap_at_apex"]
 }`;
 
-    // 4. Call Grok
+    // 5. Call Grok
     const grok = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -146,7 +147,7 @@ OUTPUT ONLY VALID JSON (NO EXTRA TEXT):
     const data = await grok.json();
     const raw = data.choices?.[0]?.message?.content?.trim() || '';
 
-    // 5. Parse with Dataset Fallback
+    // 6. Parse with Dataset Fallback
     let verdict = {
       rule: `${incidentType} incident`,
       fault: { 
@@ -154,7 +155,7 @@ OUTPUT ONLY VALID JSON (NO EXTRA TEXT):
         "Car B": `${100 - datasetAvgFaultA}%` 
       },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Contact occurred during overtake.\n\nTip A: Brake earlier for safer entry.\nTip B: Hold racing line firmly.`,
+      explanation: `Contact occurred during an overtaking attempt.\n\nTip A: Establish overlap before turning in.\nTip B: Hold racing line when under pressure.`,
       overtake_tip: "Wait for overlap at apex",
       defend_tip: "Stay predictable on defense",
       spotter_advice: {
@@ -185,19 +186,6 @@ OUTPUT ONLY VALID JSON (NO EXTRA TEXT):
       };
     } catch (e) {
       console.log('JSON parse failed, using dataset prior:', e);
-    }
-
-    // Post-process: Friendly slang (1 phrase max)
-    const phrases = [
-      "turned in like you weren't even there",
-      "used you as a guardrail",
-      "divebombed the chicane",
-      "locked up and collected",
-      "held your line like a champ"
-    ];
-    if (Math.random() > 0.5 && verdict.explanation.includes('contact')) {
-      const phrase = phrases[Math.floor(Math.random() * phrases.length)];
-      verdict.explanation = verdict.explanation.replace('contact', `${phrase}, contact`);
     }
 
     return Response.json({ verdict, matches, isNASCAR });
