@@ -78,7 +78,7 @@ export async function POST(req) {
     const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
 
     // -------------------------------------------------
-    // 3. Approved Phrases (ONLY THESE)
+    // 3. Approved Phrases
     // -------------------------------------------------
     const phrases = [
       "Vortex of Danger",
@@ -92,12 +92,11 @@ export async function POST(req) {
       "turn off the racing line"
     ];
 
-    // Randomly pick 1–2 phrases
     const shuffled = [...phrases].sort(() => Math.random() - 0.5);
     const selectedPhrases = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
 
     // -------------------------------------------------
-    // 4. Prompt – EDUCATIONAL + RANDOMIZED
+    // 4. Prompt – NOW WITH SCCA APPENDIX P
     // -------------------------------------------------
     const prompt = `You are a neutral, educational sim racing steward for r/simracingstewards.
 
@@ -107,23 +106,23 @@ Type: ${incidentType}
 ${datasetNote}
 Confidence: ${confidence}
 
-RULES (quote 1–2):
+RULES (quote 1–2, prioritize SCCA Appendix P when relevant):
 - iRacing 8.1.1.8: "A driver may not gain an advantage by leaving the racing surface or racing below the white line"
-- SCCA Appendix P: "Overtaker must be alongside at apex. One safe move only."
+- SCCA Appendix P (Racing Room & Passing): "The overtaking car must have a reasonable chance of completing the pass safely. Late moves into the 'Vortex of Danger' are not allowed."
 - BMW SIM GT: "Predictable lines. Yield on rejoins."
 - F1 Art. 27.5: "Avoid contact. Predominant fault."
 
 Use ONLY these phrases naturally (1–2 max):
 ${selectedPhrases.map(p => `- "${p}"`).join('\n')}
 
-Tone: calm, helpful, learning-focused. No drama, no blame.
+Tone: calm, educational, community-focused. No blame.
 
 OUTPUT ONLY VALID JSON:
 {
-  "rule": "Quote one rule",
+  "rule": "Quote one rule (favor SCCA Appendix P for Vortex/divebomb)",
   "fault": { "Car A": "${avgFaultA}%", "Car B": "${100 - avgFaultA}%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
-  "explanation": "3–4 sentences: what happened, why, teaching point. Use 1–2 selected phrases.",
+  "explanation": "3–4 sentences: what happened, why, teaching point. Use selected phrase(s).",
   "overtake_tip": "One actionable tip for Car A.",
   "defend_tip": "One actionable tip for Car B.",
   "spotter_advice": {
@@ -146,7 +145,7 @@ OUTPUT ONLY VALID JSON:
         model: 'grok-3',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 700,
-        temperature: 0.7,  // Higher = more varied
+        temperature: 0.7,
         top_p: 0.9
       }),
       signal: controller.signal
@@ -165,9 +164,9 @@ OUTPUT ONLY VALID JSON:
       rule: `iRacing 8.1.1.8`,
       fault: { "Car A": `${avgFaultA}%`, "Car B": `${100 - avgFaultA}%` },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Car A attempted a late move into the apex. Contact occurred. Its the responsibility of the overtaking car to do so safely.\n\nTip A: Build overlap first.\nTip B: Hold line on 'car inside!' call.`,
-      overtake_tip: "Wait for 50% overlap before turning in.",
-      defend_tip: "Stay predictable when defender calls 'car inside!'.",
+      explanation: `Car A entered the Vortex of Danger with a late Dive bomb. You didn't have space to make that move. Its the responsibility of the overtaking car to do so safely.\n\nTip A: Wait for overlap.\nTip B: Hold line on 'car inside!' call.`,
+      overtake_tip: "Build 50% overlap before turning in.",
+      defend_tip: "Stay predictable when spotter calls 'car inside!'.",
       spotter_advice: {
         overtaker: "Listen for 'clear inside' before committing.",
         defender: "Call 'car inside!' early and hold line."
