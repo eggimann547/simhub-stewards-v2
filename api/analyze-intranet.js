@@ -32,12 +32,13 @@ export async function POST(req) {
 
     console.log('DEBUG:', { title, isNASCAR, incidentType });
 
-    // 2. Load CSV (Vercel-safe)
+    // 2. Load CSV – VERCEL-SAFE
     let matches = [];
     let baseFaultA = isNASCAR ? 65 : 81;
 
     try {
       const csvPath = path.join(__dirname, '..', 'public', 'simracingstewards_28k.csv');
+      console.log('CSV path:', csvPath); // DEBUG
       const text = fs.readFileSync(csvPath, 'utf8');
       const data = Papa.parse(text, { header: true }).data;
 
@@ -58,8 +59,10 @@ export async function POST(req) {
       baseFaultA = faults.length
         ? Math.round(faults.reduce((a, b) => a + b, 0) / faults.length)
         : baseFaultA;
+
+      console.log('CSV loaded – matches:', matches.length, 'faultA:', baseFaultA);
     } catch (e) {
-      console.log('CSV failed:', e);
+      console.log('CSV load failed:', e);
     }
 
     const confidence = matches.length >= 3 ? 'High' : matches.length ? 'Medium' : 'Low';
@@ -73,8 +76,8 @@ export async function POST(req) {
 1. iRacing 8.1.1.8: No advantage off track.
 2. SCCA: Overtaker must be alongside at apex.`;
 
-    // 4. Prompt – clean, no example
-    const prompt = `You are a professional sim racing steward.
+    // 4. Prompt – clean
+    const prompt = `You are a pro sim racing steward.
 
 TITLE: "${title}"
 TYPE: ${incidentType}
@@ -84,7 +87,7 @@ BASE FAULT: ${baseFaultA}% on Car A
 RULES:
 ${rules}
 
-Use these phrases naturally:
+Use these phrases:
 - Dive bomb
 - Vortex of Danger
 - left the door open
@@ -95,14 +98,14 @@ Use these phrases naturally:
 - you didn't have space to make that move
 - turn off the racing line
 
-OUTPUT ONLY VALID JSON:
+OUTPUT ONLY JSON:
 {
   "rule": "quote one rule",
   "fault": { "Car A": "XX%", "Car B": "XX%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
   "explanation": "3-4 sentences: what happened, why, teaching point.",
-  "overtake_tip": "One tip for Car A.",
-  "defend_tip": "One tip for Car B.",
+  "overtake_tip": "Tip for Car A.",
+  "defend_tip": "Tip for Car B.",
   "spotter_advice": { "overtaker": "...", "defender": "..." },
   "confidence": "${confidence}",
   "flags": ["${incidentType.split(' ')[0].toLowerCase()}"]
@@ -128,7 +131,7 @@ OUTPUT ONLY VALID JSON:
 
     const raw = (await grok.json()).choices?.[0]?.message?.content?.trim() || '';
 
-    // 6. Parse + fallback
+    // 6. Parse
     let verdict = {
       rule: isNASCAR ? 'NASCAR Inside Line Priority' : 'iRacing 8.1.1.8',
       fault: { 'Car A': `${baseFaultA}%`, 'Car B': `${100 - baseFaultA}%` },
