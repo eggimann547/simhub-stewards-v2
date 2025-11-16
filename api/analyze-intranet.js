@@ -13,7 +13,7 @@ export async function POST(req) {
   try {
     const { url } = schema.parse(await req.json());
 
-    // 1. YouTube title
+    // === 1. YouTube Title & Incident Type ===
     const videoId = url.match(/v=([0-9A-Za-z_-]{11})/)?.[1] || '';
     let title = 'unknown incident';
     let incidentType = 'general contact';
@@ -36,22 +36,67 @@ export async function POST(req) {
       }
     }
 
-    // 2. Dataset – FIXED CSV LOAD + DYNAMIC FAULT %
+    // === 2. ENHANCED FAULT ENGINE ===
     let matches = [];
-    let avgFaultA = 81;
+    let finalFaultA = 60; // neutral start
 
+    // BMW SIM GT Rule Matching
+    const BMW_RULES = [
+      { keywords: ['dive', 'late', 'lunge', 'brake', 'underbraking', 'punting'], faultA: 90, desc: "Under-braking and punting (BMW SIM GT Rule 5)" },
+      { keywords: ['block', 'weave', 'reactionary', 'move under braking'], faultA: 20, desc: "Blocking (BMW SIM GT Rule 2)" },
+      { keywords: ['rejoin', 'off-track', 'merge', 'spin', 'dropped wheels'], faultA: 85, desc: "Unsafe rejoin (BMW SIM GT Rule 7)" },
+      { keywords: ['side-by-side', 'overlap', 'apex', 'cut', 'door open'], faultA: 95, desc: "Side-by-side rule violation (BMW SIM GT Rule 4)" },
+      { keywords: ['blue flag', 'yield', 'lapped', 'faster car'], faultA: 70, desc: "Failure to yield blue flag (BMW SIM GT Rule 3)" },
+      { keywords: ['vortex', 'exit', 'overtake', 'closing'], faultA: 88, desc: "Vortex of Danger (SCCA Appendix P)" },
+      { keywords: ['track limits', 'cut', 'white line', 'off-track'], faultA: 75, desc: "Track limits violation (iRacing 8.1.1.8)" }
+    ];
+
+    let ruleMatch = null;
+    let ruleScore = 0;
+    const lowerTitle = title.toLowerCase();
+
+    for (const rule of BMW_RULES) {
+      const matchCount = rule.keywords.filter(k => lowerTitle.includes(k)).length;
+      if (matchCount > 0) {
+        const weighted = matchCount * 10;
+        if (weighted > ruleScore) {
+          ruleScore = weighted;
+          ruleMatch = rule;
+        }
+      }
+    }
+    const ruleFaultA = ruleMatch ? ruleMatch.faultA : 60;
+
+    // Heuristic Fault (20%)
+    const heuristicMap = {
+      'divebomb': 92,
+      'vortex exit': 88,
+      'weave block': 15,
+      'unsafe rejoin': 80,
+      'track limits': 70
+    };
+    const heuristicFaultA = heuristicMap[incidentType] || 70;
+
+    // CSV Dataset Matching
     try {
-      // Vercel-safe CSV load (fs instead of fetch)
       const csvPath = path.join(process.cwd(), 'public', 'simracingstewards_28k.csv');
       const text = fs.readFileSync(csvPath, 'utf8');
       const parsed = Papa.parse(text, { header: true }).data;
       const query = title.toLowerCase();
+      const queryWords = query.split(' ').filter(w => w.length > 2);
 
       for (const row of parsed) {
         if (!row.title || !row.reason) continue;
-        const rowText = `${row.title} ${row.reason}`.toLowerCase();
-        let score = query.split(' ').filter(w => rowText.includes(w)).length;
-        if (rowText.includes(incidentType)) score += 2;
+        const rowText = `${row.title} ${row.reason} ${row.ruling || ''}`.toLowerCase();
+        let score = 0;
+
+        queryWords.forEach(word => {
+          if (rowText.includes(word)) score += 3;
+        });
+        if (rowText.includes(incidentType)) score += 5;
+        if (rowText.includes('no further action') || rowText.includes('racing incident')) score -= 4;
+        if (rowText.includes('fault') || rowText.includes('divebomb') || rowText.includes('punted')) score += 4;
+
         if (score > 0) matches.push({ ...row, score });
       }
 
@@ -59,22 +104,42 @@ export async function POST(req) {
       matches = matches.slice(0, 5);
 
       const validFaults = matches
-        .map(m => parseFloat(m.fault_pct_driver_a || 0))
-        .filter(f => !isNaN(f) && f > 0);
-      avgFaultA = validFaults.length > 0
-        ? Math.round(validFaults.reduce((a, b) => a + b, 0) / validFaults.length)
-        : 81;
+        .map(m => parseFloat(m.fault_pct_driver_a))
+        .filter(f => !isNaN(f) && f >= 0 && f <= 100);
+
+      const csvFaultA = validFaults.length > 0
+        ? validFaults.reduce((a, b) => a + b, 0) / validFaults.length
+        : 60;
+
+      // === FINAL WEIGHTED FAULT ===
+      finalFaultA = Math.round(
+        (csvFaultA * 0.4) +
+        (ruleFaultA * 0.4) +
+        (heuristicFaultA * 0.2)
+      );
+      finalFaultA = Math.min(98, Math.max(5, finalFaultA)); // Clamp
     } catch (e) {
       console.log('CSV failed:', e);
     }
 
+    // === Dataset Note & Confidence ===
     const datasetNote = matches.length
-      ? `Dataset: ${matches.length}/5 matches (Avg A fault: ${avgFaultA}%). Top: "${matches[0].title}" (${matches[0].ruling})`
-      : `Dataset: ${incidentType} incidents avg ${avgFaultA}% Car A fault`;
+      ? `Dataset: ${matches.length}/5 matches. Top: "${matches[0]?.title}" (${matches[0]?.ruling})`
+      : `No dataset match. Using rule: ${ruleMatch?.desc || 'iRacing Sporting Code'}`;
 
-    const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
+    const confidence =
+      matches.length >= 3 && ruleMatch ? 'High' :
+      matches.length >= 1 || ruleMatch ? 'Medium' :
+      'Low';
 
-    // 3. Prompt – FIXED FOR UNIQUENESS + YOUR PHRASES
+    // === Selected Rule for Prompt ===
+    const selectedRule = ruleMatch
+      ? ruleMatch.desc
+      : incidentType === 'divebomb' ? 'SCCA Appendix P: Late moves into Vortex of Danger not allowed'
+      : incidentType === 'weave block' ? 'BMW SIM GT Rule 2: No blocking or reactionary moves'
+      : 'iRacing 8.1.1.8: No advantage by leaving racing surface';
+
+    // === 3. Prompt with Dynamic Rules & Phrases ===
     const phrases = [
       "Vortex of Danger",
       "Dive bomb",
@@ -87,29 +152,20 @@ export async function POST(req) {
       "turn off the racing line"
     ];
 
-    // Randomize 1–2 phrases
     const shuffled = [...phrases].sort(() => Math.random() - 0.5);
     const selectedPhrases = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
 
     const prompt = `You are a neutral, educational sim racing steward for r/simracingstewards.
-
 Video: ${url}
 Title: "${title}"
 Type: ${incidentType}
 ${datasetNote}
 Confidence: ${confidence}
-
-RULES (rotate 1–2):
-- iRacing 8.1.1.8: "A driver may not gain an advantage by leaving the racing surface or racing below the white line"
-- SCCA Appendix P: "The overtaking car must have a reasonable chance of completing the pass safely. Late moves into the 'Vortex of Danger' are not allowed."
-- BMW SIM GT: "Predictable lines. Yield on rejoins."
-- F1 Art. 27.5: "Avoid contact. Predominant fault."
-
+RULES (use the most relevant):
+- ${selectedRule}
 Use ONLY these phrases naturally (1–2 max):
 ${selectedPhrases.map(p => `- "${p}"`).join('\n')}
-
 Tone: calm, educational, community-focused. No blame.
-
 1. Quote the rule.
 2. State fault %.
 3. Explain what happened (3–4 sentences, use title/type, 1–2 phrases).
@@ -118,11 +174,10 @@ Tone: calm, educational, community-focused. No blame.
 6. Always include spotter advice:
    - Overtaker: "Listen to spotter for defender's line before committing."
    - Defender: "React to spotter's 'car inside!' call immediately."
-
 RETURN ONLY JSON:
 {
   "rule": "Text",
-  "fault": { "Car A": "${avgFaultA}%", "Car B": "${100 - avgFaultA}%" },
+  "fault": { "Car A": "${finalFaultA}%", "Car B": "${100 - finalFaultA}%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
   "explanation": "Summary paragraph\\n\\nTip A: ...\\nTip B: ...",
   "overtake_tip": "Actionable tip for A",
@@ -134,7 +189,7 @@ RETURN ONLY JSON:
   "confidence": "${confidence}"
 }`;
 
-    // 4. Grok
+    // === 4. Call Grok ===
     const grok = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -145,7 +200,7 @@ RETURN ONLY JSON:
         model: 'grok-3',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 700,
-        temperature: 0.7,  // Varied outputs
+        temperature: 0.7,
         top_p: 0.9
       }),
       signal: controller.signal
@@ -157,12 +212,12 @@ RETURN ONLY JSON:
     const data = await grok.json();
     const raw = data.choices?.[0]?.message?.content?.trim() || '';
 
-    // 5. Parse
+    // === 5. Parse Grok Response ===
     let verdict = {
-      rule: `${incidentType} violation (iRacing 8.1.1.8)`,
-      fault: { "Car A": `${avgFaultA}%`, "Car B": `${100 - avgFaultA}%` },
+      rule: selectedRule,
+      fault: { "Car A": `${finalFaultA}%`, "Car B": `${100 - finalFaultA}%` },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Contact due to late move. Its the responsibility of the overtaking car to do so safely.\\n\\nTip A: Brake earlier.\\nTip B: Widen line.`,
+      explanation: `Contact occurred due to late move. Its the responsibility of the overtaking car to do so safely.\n\nTip A: Establish overlap before apex.\nTip B: Hold predictable line.`,
       overtake_tip: "Wait for overlap + listen to spotter",
       defend_tip: "React to 'car inside!' call",
       spotter_advice: {
