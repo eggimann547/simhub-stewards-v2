@@ -11,7 +11,7 @@ export async function POST(req) {
   try {
     const { url } = schema.parse(await req.json());
 
-    // 1. Extract YouTube Title & Incident Type
+    // 1. YouTube Title & Incident Type
     const videoId = url.match(/v=([0-9A-Za-z_-]{11})/)?.[1] || '';
     let title = 'unknown incident';
     let incidentType = 'general contact';
@@ -34,9 +34,9 @@ export async function POST(req) {
       }
     }
 
-    // 2. Load & Search Dataset
+    // 2. Dataset Search & Stats
     let matches = [];
-    let datasetAvgFaultA = 81; // fallback
+    let datasetAvgFaultA = 81;
     try {
       const res = await fetch('/simracingstewards_28k.csv', { signal: controller.signal });
       if (res.ok) {
@@ -55,7 +55,6 @@ export async function POST(req) {
         matches.sort((a, b) => b.score - a.score);
         matches = matches.slice(0, 5);
 
-        // Calculate real average fault % for Car A
         const validFaults = matches
           .map(m => parseFloat(m.fault_pct_driver_a || 0))
           .filter(f => !isNaN(f) && f >= 0);
@@ -73,27 +72,19 @@ export async function POST(req) {
 
     const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
 
-    // 3. PROMPT – FRIENDLY, NEUTRAL, EDUCATIONAL + COMMUNITY LANGUAGE
-    const communityLanguage = `
-COMMUNITY LANGUAGE (use 1–2 naturally, keep it positive):
-- "turned in like you weren't even there"
-- "used you as a guardrail"
-- "divebombed the chicane"
-- "locked up and collected"
-- "held your line like a champ"
-`;
+    // 3. PROMPT – CLEAN, DATA-FIRST, STRICT
+    const prompt = `You are a neutral, data-driven sim racing steward.
 
-    const prompt = `You are a friendly, experienced sim racing steward helping drivers improve.
+### DATASET PRIOR (MUST USE AS BASELINE)
+${datasetNote}
+**FAULT BASELINE: ${datasetAvgFaultA}% Car A / ${100 - datasetAvgFaultA}% Car B**
+→ Adjust ±20% max only if video clearly contradicts.
+→ Must sum to 100%.
 
 INCIDENT:
 - Video: ${url}
 - Title: "${title}"
 - Type: ${incidentType}
-
-DATASET PRIOR:
-${datasetNote}
-→ Start fault at ${datasetAvgFaultA}% Car A / ${100 - datasetAvgFaultA}% Car B
-→ Adjust ±20% only if video clearly shows otherwise. Must sum to 100%.
 
 RULES (Quote 1–2 most relevant):
 1. iRacing 8.1.1.8: "A driver may not gain an advantage by leaving the racing surface or racing below the white line."
@@ -101,36 +92,20 @@ RULES (Quote 1–2 most relevant):
 3. BMW SIM GT: "Predictable lines. Yield on rejoins."
 4. F1 Art. 27.5: "More than 50% overlap required to claim space. Avoid contact."
 
-ANALYSIS:
-1. Quote rule(s).
-2. Fault % (sum 100%, dataset-guided).
-3. Car A = overtaker/inside, Car B = defender/outside.
-4. Explain in 2–3 short sentences — use 1–2 community phrases naturally.
-5. One clear overtaking tip for Car A.
-6. One clear defense tip for Car B.
-7. Spotter callouts.
-
-${communityLanguage}
-
-CHECK IF RELEVANT:
-- Was there overlap at apex?
-- Did anyone cut the corner and gain time?
-- Was the rejoin safe and predictable?
-
-OUTPUT ONLY VALID JSON:
+OUTPUT ONLY VALID JSON (NO EXTRA TEXT):
 {
   "rule": "iRacing 8.1.1.8",
   "fault": { "Car A": "78%", "Car B": "22%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
-  "explanation": "Car A turned in like you weren't even there, causing contact at the apex.\\n\\nTip A: Wait for overlap before committing.\\nTip B: Hold your line like a champ on 'car inside!'",
-  "overtake_tip": "Build overlap before turning in",
-  "defend_tip": "Stay predictable when spotter calls 'inside'",
+  "explanation": "Brief 2–3 sentence summary.",
+  "overtake_tip": "One clear tip for Car A.",
+  "defend_tip": "One clear tip for Car B.",
   "spotter_advice": {
-    "overtaker": "Wait for 'clear inside' from spotter",
-    "defender": "Call 'car inside!' early and hold line"
+    "overtaker": "Spotter call for overtaker.",
+    "defender": "Spotter call for defender."
   },
   "confidence": "${confidence}",
-  "flags": ["divebomb", "no_overlap"]
+  "flags": ["divebomb"]
 }`;
 
     // 4. Call Grok
@@ -143,9 +118,9 @@ OUTPUT ONLY VALID JSON:
       body: JSON.stringify({
         model: 'grok-3',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 700,
-        temperature: 0.3,
-        top_p: 0.8
+        max_tokens: 600,
+        temperature: 0.2,   // Critical: low for strict adherence
+        top_p: 0.7
       }),
       signal: controller.signal
     });
@@ -164,7 +139,7 @@ OUTPUT ONLY VALID JSON:
         "Car B": `${100 - datasetAvgFaultA}%` 
       },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Contact occurred during overtake.\\n\\nTip A: Brake earlier for safer entry.\\nTip B: Hold racing line firmly.`,
+      explanation: `Contact occurred during overtake.\n\nTip A: Brake earlier for safer entry.\nTip B: Hold racing line firmly.`,
       overtake_tip: "Wait for overlap at apex",
       defend_tip: "Stay predictable on defense",
       spotter_advice: {
@@ -195,6 +170,19 @@ OUTPUT ONLY VALID JSON:
       };
     } catch (e) {
       console.log('JSON parse failed, using dataset prior:', e);
+    }
+
+    // === POST-PROCESS: Add 1–2 community phrases (friendly, neutral)
+    const phrases = [
+      "turned in like you weren't even there",
+      "used you as a guardrail",
+      "divebombed the chicane",
+      "locked up and collected",
+      "held your line like a champ"
+    ];
+    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+    if (verdict.explanation.includes('contact') && Math.random() > 0.5) {
+      verdict.explanation = verdict.explanation.replace('contact', `${randomPhrase}, causing contact`);
     }
 
     return Response.json({ verdict, matches });
