@@ -1,5 +1,5 @@
 // api/analyze-intranet.js
-// Version: 2.4.0
+// Version: 1.0.0
 // Date:    2025-11-17
 import { z } from 'zod';
 import Papa from 'papaparse';
