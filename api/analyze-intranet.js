@@ -47,7 +47,7 @@ export async function POST(req) {
       { keywords: ['track limits', 'cut', 'white line', 'off-track'], faultA: 75, desc: "Track limits violation (iRacing 8.1.1.8)" },
       { keywords: ['netcode', 'lag', 'teleport', 'desync'], faultA: 50, desc: "Netcode-related incident (No fault assignable)" },
       { keywords: ['barrier', 'wall', 'used you', 'used as barrier'], faultA: 95, desc: "Using another car as a barrier (Intentional contact)" },
-      { keywords: ['pit', 'maneuverDescriptor', 'pit maneuver', 'spin out'], faultA: 98, desc: "Pit maneuver (Intentional wrecking)" }
+      { keywords: ['pit', 'maneuver', 'pit maneuver', 'spin out'], faultA: 98, desc: "Pit maneuver (Intentional wrecking)" }
     ];
     let ruleMatch = null;
     let ruleScore = 0;
@@ -84,7 +84,7 @@ export async function POST(req) {
       const queryWords = query.split(' ').filter(w => w.length > 2);
       for (const row of parsed) {
         if (!row.title || !row.reason) continue;
-        const rowText $"{row.title} ${row.reason} ${row.ruling || ''}`.toLowerCase();
+        const rowText = `${row.title} ${row.reason} ${row.ruling || ''}`.toLowerCase();
         let score = 0;
         queryWords.forEach(word => {
           if (rowText.includes(word)) score += 3;
@@ -147,7 +147,7 @@ export async function POST(req) {
     const selectedPhrases = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
     const prompt = `You are a neutral, educational sim racing steward for r/simracingstewards.
 Video: ${url}
-Title: ${title}
+Title: "${title}"
 Type: ${incidentType}
 ${datasetNote}
 Confidence: ${confidence}
@@ -164,7 +164,6 @@ Tone: calm, educational, community-focused. No blame.
 6. Always include spotter advice:
    - Overtaker: "Listen to spotter for defender's line before committing."
    - Defender: "React to spotter's 'car inside!' call immediately."
-DO NOT wrap the word "incident" in single quotes when used in output.
 RETURN ONLY JSON:
 {
   "rule": "Text",
