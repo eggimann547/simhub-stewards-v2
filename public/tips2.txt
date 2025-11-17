@@ -1,0 +1,21 @@
+# tips2.txt - Sim Racing Stewards Knowledge Base
+# Format: Tip | category | source
+# Categories: braking overtaking defense vision spotter practice mental netcode general
+# Add yours below # YOUR TIPS
+
+Look where you want to go - vision drives the car | vision | (Ross Bentley)
+Brake earlier and focus on End-of-Braking (EoB) point | braking | (Ross Bentley)
+Experiment with brake release: early/slow, late/fast | braking | (Ross Bentley)
+Turn your head - scan ahead with peripheral vision | vision | (Ross Bentley)
+Practice deliberately with specific drills, not just racing | practice | (Ross Bentley)
+Smooth inputs win races - avoid jerky corrections | general | (Ross Bentley)
+Brake 10m earlier when overlap <50% | braking | (Stewards AI)
+Hold your racing line - don't weave or leave door open | defense | (BMW SIM GT Rule 2)
+Yield when spotter says "Car inside!" | spotter | (iRacing)
+Establish overlap before apex - no late lunges | overtaking | (SCCA Appendix P)
+Netcode lag = no fault - restart cleanly | netcode | (Stewards AI)
+Never use another car as a barrier | defense | (Stewards AI)
+Pit maneuvers = intentional wrecking - 100% fault | general | (Stewards AI)
+
+# YOUR TIPS - Add here (one per line)
+# Example: My best T1 brake point: 120m | braking | (Your Name)
