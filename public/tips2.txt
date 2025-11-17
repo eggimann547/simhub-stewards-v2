@@ -1,151 +1,52 @@
-# Comprehensive Sim Racing Tips from iRacing, BMW SIM GT, SCCA, GT7 Rulings, Reddit, YouTube, FB, TikTok, Insta
-# Format: Tip | category | (source)
-# Categories: braking overtaking defense vision spotter practice mental netcode rejoin lapped general
-# Sourced from 28k dataset, iRacing Sporting Code, BMW SIM GT Rules, SCCA Guidelines, GT7 Penalties, r/simracing threads, YouTube comments, FB groups, TikTok shorts, Insta Reels
-# GT7 included for rulings/penalties despite arcade nature — e.g., time penalties for contact
+// === 3. LOAD tips2.txt (SAFE + ROBUST) ===
+let proTip = '';
+try {
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+  const tipsRes = await fetch(`${baseUrl}/tips2.txt`, { 
+    signal: controller.signal,
+    headers: { 'Cache-Control': 'no-cache' } // Prevent stale
+  });
 
-# === BRAKING & DIVEBOMBS ===
-Brake 10m earlier when overlap <50% to avoid punts | braking | (Stewards AI)
-Late lunge without overlap = 90% overtaker fault | braking | (BMW SIM GT Rule 5)
-Trail brake into apex to prevent divebomb collisions | braking | (Ross Bentley)
-Under-braking contact is avoidable — lift early | braking | (iRacing Sporting Code)
-Divebomb penalties in GT7: 2-5 sec for late moves | braking | (GT7 Penalty System)
-Brake straight — no trail braking in traffic | braking | (SCCA Guidelines)
-Lift throttle to defend against dives | braking | (r/simracing)
-YouTube tip: Brake board 100m for T1 safety | braking | (YouTube: JimmyBroadbent)
-TikTok hack: Modulate brake for late apex | braking | (TikTok: SimFails)
-FB group: Heavy brake on yellow flags | braking | (Facebook: SimRacingTips)
+  if (tipsRes.ok) {
+    const text = await tipsRes.text();
+    const lines = text.split('\n');
 
-# === OVERTAKING & OVERLAP ===
-Establish 50% overlap before apex for right to space | overtaking | (BMW SIM GT Rule 4)
-Lunge at apex = 90% fault on overtaker | overtaking | (Stewards AI)
-Vortex of Danger: No dives post-apex | overtaking | (SCCA Appendix P)
-Side-by-side = shared racing room | overtaking | (iRacing 8.1.1.8)
-GT7 ruling: Overtake inside = yield if contact | overtaking | (GT7 Etiquette)
-Commit early or bail — no half-measures | overtaking | (r/simracing)
-Insta Reel: Mirror check mid-overtake | overtaking | (Insta: @simracinghub)
-YouTube: Overlap nose = earned space | overtaking | (YouTube: Driver61)
-FB poll: Late pass = give position back | overtaking | (Facebook: SimCommunity)
-TikTok: Smooth throttle on overtake exit | overtaking | (TikTok: OverlapTips)
+    const tips = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.includes('|')) continue;
 
-# === DEFENSE & BLOCKING ===
-Hold your line — one defensive move only | defense | (BMW SIM GT Rule 2)
-Weaving to block = penalty | defense | (iRacing Sporting Code)
-Door left open? Defender not required to yield | defense | (Stewards AI)
-Reactionary weave under braking = fault | defense | (SCCA Guidelines)
-GT7: Blocking = 3-7 sec penalty | defense | (GT7 Penalty System)
-Defend predictable — no sudden moves | defense | (r/simracing)
-YouTube: Close door firmly on overlap | defense | (YouTube: CoachDaveAcademy)
-Insta: Mirror blind spots in defense | defense | (Insta: @gt7defense)
-FB: Yield on blue flag in 2 corners | defense | (Facebook: BlueFlagGroup)
-TikTok: Hold apex if overlapped | defense | (TikTok: BlockFails)
+      const parts = trimmed.split('|').map(p => p.trim());
+      if (parts.length < 2) continue; // Need at least tip + category
 
-# === REJOIN & TRACK LIMITS ===
-Rejoin parallel — check mirrors first | rejoin | (iRacing 8.1.1.8)
-Off-track gain = immediate yield back | rejoin | (BMW SIM GT Rule 7)
-Dropped wheels = unsafe rejoin penalty | rejoin | (SCCA Guidelines)
-GT7: Rejoin across track = 5 sec penalty | rejoin | (GT7 Rulings)
-2 wheels over white line max | general | (iRacing Sporting Code)
-YouTube: Slow rejoin to racing speed | rejoin | (YouTube: iRacingGuide)
-r/simracing: Signal rejoin with spotter | rejoin | (r/simracing)
-FB: Penalty zone for rejoin fails | rejoin | (Facebook: RejoinTips)
-TikTok: Avoid cross-track rejoins | rejoin | (TikTok: RejoinMistakes)
-Insta: Safe merge = no ghosting | rejoin | (Insta: @rejointips)
+      const tip = parts[0];
+      const category = parts[1].toLowerCase();
+      const source = parts.slice(2).join(' | ').trim(); // Rejoin extra |
 
-# === NETCODE & LAG ===
-Lag desync = racing incident, no fault | netcode | (iRacing Sporting Code)
-Netcode teleport = restart cleanly | netcode | (Stewards AI)
-Check ping before joining session | netcode | (r/simracing)
-GT7: Latency incident = no penalty | netcode | (GT7 Update Notes)
-YouTube: Wired connection for stable netcode | netcode | (YouTube: SimTech)
-FB: Desync = both yield position | netcode | (Facebook: LagGroup)
-TikTok: Ping spike = lift throttle | netcode | (TikTok: NetcodeHacks)
-Insta: Avoid high-ping servers | netcode | (Insta: @simlagfix)
+      if (tip && category) {
+        tips.push({ tip, category, source: source || '(Stewards AI)' });
+      }
+    }
 
-# === SPOTTER & VISION ===
-Spotter "car inside!" = yield space immediately | spotter | (Stewards AI)
-Mirror scan every 3 seconds on straights | vision | (Ross Bentley)
-Look through apex, not at nose of car | vision | (iRacing School)
-Peripheral vision for traffic detection | vision | (SCCA Guidelines)
-GT7: Spotter alerts for blue flags | spotter | (GT7 Features)
-r/simracing: Use spotter for blind rejoins | spotter | (r/simracing)
-YouTube: Head movement for better vision | vision | (YouTube: Driver61)
-FB: Spotter call on yellow flags | spotter | (Facebook: SpotterTips)
-TikTok: Quick mirror flick in corners | vision | (TikTok: VisionHacks)
-Insta: Scan 3 cars ahead | vision | (Insta: @spotterpro)
-
-# === LAPPED & BLUE FLAGS ===
-Blue flags: Yield within 2 corners | lapped | (BMW SIM GT Rule 3)
-Lapped car: Hold predictable line | lapped | (iRacing Sporting Code)
-GT7: Blue flag ignore = 10 sec penalty | lapped | (GT7 Penalties)
-YouTube: Signal pass for lapped traffic | lapped | (YouTube: BlueFlagGuide)
-r/simracing: No blocking lapped cars | lapped | (r/simracing)
-FB: Yield safe on blue = no contact | lapped | (Facebook: LappedRules)
-
-# === GENERAL & MENTAL ===
-Racing incident = both learn and improve | general | (Stewards AI)
-Smooth inputs over aggressive saves | general | (Ross Bentley)
-Practice deliberate: 1 skill per session | practice | (iRacing School)
-Turn off racing line for real feel | general | (r/simracing)
-GT7: Heavy damage for barrier hits | general | (GT7 Rulings)
-YouTube: Race your own race, not others | mental | (YouTube: SafeIsFast)
-FB: Grip too tight? Wiggle fingers | mental | (Facebook: GripTips)
-TikTok: Frustration? Breathe and reset | mental | (TikTok: MentalHacks)
-Insta: Consistency beats one fast lap | practice | (Insta: @simcoach)
-SCCA: Fair play = no shaming incidents | general | (SCCA Guidelines)
-
-# === PIT & INTENTIONAL ===
-Pit maneuver = intentional wrecking, 100% fault | general | (Stewards AI)
-GT7: Brake check = severe penalty | general | (GT7 Etiquette)
-YouTube: No using cars as barriers | general | (YouTube: PitManeuver)
-r/simracing: Intentional contact = ban | general | (r/simracing)
-
-# === ENDURANCE & ADVANCED ===
-Endurance: Fuel strategy over aggression | endurance | (iRacing Events)
-Lift for traffic in long races | endurance | (SCCA Runoffs)
-YouTube: Tire management in heat | endurance | (YouTube: EnduranceTips)
-FB: Stint planning = no over-push | endurance | (Facebook: EnduranceGroup)
-
-# === COMMUNITY SOURCED (Reddit/YouTube/FB/TikTok/Insta) ===
-Race clean in rookies to build SR fast | general | (r/simracing)
-YouTube: Coasting gives reaction time | braking | (YouTube: @SuellioAlmeida)
-FB: Give and take in wheel-to-wheel | overtaking | (Facebook: Wheel2Wheel)
-TikTok: Dodge incidents with anticipation | mental | (TikTok: DodgeHacks)
-Insta: SR > iRating early on | practice | (Insta: @iracingpro)
-r/simracing: Common denominator in wrecks = you | mental | (r/simracing)
-YouTube: Jump practice servers for traffic | practice | (YouTube: iRacing101)
-FB: Bad luck? Analyze replay first | general | (Facebook: ReplayTips)
-TikTok: 3-wide = back off and survive | overtaking | (TikTok: 3WideFails)
-Insta: Focus SR, forget iRating grind | practice | (Insta: @simrating)
-
-# === GT7-SPECIFIC RULINGS (Despite Arcade Nature) ===
-GT7: Collision causing off-track = 3-7 sec penalty | general | (GT7 Penalty System)
-Ignore yellow = 1-5 sec in GT7 | general | (GT7 Flags)
-GT7: Bump pass = give place back | overtaking | (GT7 Etiquette)
-Penalty zone ghosting in GT7 = stay off line | general | (GT7 Updates)
-GT7: Latency incident = no fault | netcode | (GT7 Notes)
-FB: GT7 brake check = severe time loss | braking | (Facebook: GT7Penalties)
-TikTok: GT7 track cut = shortcut penalty | general | (TikTok: GTCuts)
-Insta: GT7 blue flag = yield or DQ | lapped | (Insta: @gt7flags)
-
-# === HISTORICAL & PRO TIPS (SCCA/iRacing Classics) ===
-SCCA: Earn room with peripheral view overlap | overtaking | (SCCA Randy Pobst)
-iRacing: Corners per incident = SR key | practice | (iRacing Code)
-BMW SIM: No reactionary moves under braking | defense | (BMW SIM GT Rule 2)
-YouTube: Safe is fast — anticipate wrecks | mental | (YouTube: SafeIsFast)
-r/simracing: Grip hard? Wiggle fingers loose | mental | (r/simracing)
-FB: iRacing incidents = analyze, don't rage | general | (Facebook: iRacingHelp)
-TikTok: SCCA passing: Nose in = room earned | overtaking | (TikTok: SCCATips)
-Insta: BMW GT: Predictable defense wins | defense | (Insta: @bmwsim)
-
-# === MORE COMMUNITY GOLD (From Threads/Comments) ===
-Reddit: Race own race — ignore chaos ahead | mental | (r/simracing)
-YouTube: Frustration? Reset with deep breath | mental | (YouTube: Driver61)
-FB: Rookies: Finish clean > win dirty | practice | (Facebook: RookieTips)
-TikTok: Mirror flick saves races | vision | (TikTok: MirrorHacks)
-Insta: Consistency = SR climb | practice | (Insta: @simconsistency)
-r/simracing: Bad config? Dial FF low first | practice | (r/simracing)
-YouTube: Manual gears = easier corner memory | general | (YouTube: ManualTips)
-FB: Anticipate — dodge don't brake | mental | (Facebook: AnticipateGroup)
-TikTok: Wiggle fingers for loose grip | mental | (TikTok: GripLoose)
-Insta: Delibrate practice: 1 skill/session | practice | (Insta: @delibratepractice)
+    if (tips.length > 0) {
+      const map = {
+        divebomb: ['braking', 'overtaking'],
+        'vortex exit': ['overtaking'],
+        'weave block': ['defense'],
+        'unsafe rejoin': ['rejoin', 'general'],
+        'track limits': ['general'],
+        netcode: ['netcode'],
+        'used as barrier': ['defense'],
+        'pit maneuver': ['general'],
+        'general contact': ['general', 'defense', 'vision']
+      };
+      const targets = map[incidentType] || ['general'];
+      const matched = tips.filter(t => targets.includes(t.category));
+      const pool = matched.length > 0 ? matched : tips;
+      const selected = pool[Math.floor(Math.random() * pool.length)];
+      proTip = selected.source ? `${selected.tip} ${selected.source}` : selected.tip;
+    }
+  }
+} catch (e) {
+  console.log('tips2.txt failed (non-critical):', e.message);
+}
