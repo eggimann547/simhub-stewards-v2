@@ -11,14 +11,14 @@ export async function POST(req) {
     const { url } = schema.parse(await req.json());
     // === 1. YouTube Title & Incident Type ===
     const videoId = url.match(/v=([0-9A-Za-z_-]{11})/)?.[1] || '';
-    let title = 'unknown incident';
+    let title = 'incident'; // ← Changed from 'unknown incident'
     let incidentType = 'general contact';
     if (videoId) {
       try {
         const oembed = await fetch(`https://www.youtube.com/oembed?url=${url}&format=json`, { signal: controller.signal });
         if (oembed.ok) {
           const data = await oembed.json();
-          title = data.title || 'unknown';
+          title = data.title || 'incident'; // ← Fallback to 'incident'
         }
         const lower = title.toLowerCase();
         if (lower.includes('dive') || lower.includes('brake')) incidentType = 'divebomb';
@@ -33,12 +33,12 @@ export async function POST(req) {
     // === 2. ENHANCED FAULT ENGINE ===
     let matches = [];
     let finalFaultA = 60; // neutral start
-    // BMW SIM GT Rule Matching
+    // BMW make GT Rule Matching
     const BMW_RULES = [
       { keywords: ['dive', 'late', 'lunge', 'brake', 'underbraking', 'punting'], faultA: 90, desc: "Under-braking and punting (BMW SIM GT Rule 5)" },
       { keywords: ['block', 'weave', 'reactionary', 'move under braking'], faultA: 20, desc: "Blocking (BMW SIM GT Rule 2)" },
       { keywords: ['rejoin', 'off-track', 'merge', 'spin', 'dropped wheels'], faultA: 85, desc: "Unsafe rejoin (BMW SIM GT Rule 7)" },
-      { keywords: ['side-by-side', 'overlap', 'apex', 'cut', 'door open', 'left the door open', 'close the door'], faultA: 95, desc: "Side-by-side rule violation (BMW SIM GT Rule 4)" },
+      { keywords: ['side-by-side', 'overlap', 'apex', 'cut', 'door open', 'left the door open', 'closed the door'], faultA: 95, desc: "Side-by-side rule violation (BMW SIM GT Rule 4)" },
       { keywords: ['blue flag', 'yield', 'lapped', 'faster car'], faultA: 70, desc: "Failure to yield blue flag (BMW SIM GT Rule 3)" },
       { keywords: ['vortex', 'exit', 'overtake', 'closing'], faultA: 88, desc: "Vortex of Danger (SCCA Appendix P)" },
       { keywords: ['track limits', 'cut', 'white line', 'off-track'], faultA: 75, desc: "Track limits violation (iRacing 8.1.1.8)" }
@@ -122,7 +122,8 @@ export async function POST(req) {
       "Vortex of Danger",
       "Dive bomb",
       "left the door open",
-      "close the door",
+      "closed the door",
+      "ran into you like you weren't there",
       "he was never going to make that pass",
       "you aren't required to leave the door open",
       "a lunge at the last second does not mean you have to give him space",
