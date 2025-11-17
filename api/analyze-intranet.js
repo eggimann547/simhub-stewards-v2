@@ -39,9 +39,10 @@ export async function POST(req) {
       }
     }
 
-    // === 2. ENHANCED FAULT ENGINE ===
+    // === 2. FAULT ENGINE ===
     let matches = [];
     let finalFaultA = 60;
+    let ruleMatch = null;
 
     const BMW_RULES = [
       { keywords: ['dive', 'late', 'lunge', 'brake', 'underbraking', 'punting'], faultA: 90, desc: "Under-braking and punting (BMW SIM GT Rule 5)" },
@@ -56,89 +57,52 @@ export async function POST(req) {
       { keywords: ['pit', 'maneuver', 'pit maneuver', 'spin out'], faultA: 98, desc: "Pit maneuver (Intentional wrecking)" }
     ];
 
-    let ruleMatch = null;
-    let ruleScore = 0;
     const lowerTitle = title.toLowerCase();
     for (const rule of BMW_RULES) {
-      const matchCount = rule.keywords.filter(k => lowerTitle.includes(k)).length;
-      if (matchCount > 0) {
-        const weighted = matchCount * 10;
-        if (weighted > ruleScore) {
-          ruleScore = weighted;
-          ruleMatch = rule;
-        }
+      if (rule.keywords.some(k => lowerTitle.includes(k))) {
+        ruleMatch = rule;
+        break;
       }
     }
-    const ruleFaultA = ruleMatch ? ruleMatch.faultA : 60;
 
     const heuristicMap = {
       'divebomb': 92, 'vortex exit': 88, 'weave block': 15, 'unsafe rejoin': 80,
       'track limits': 70, 'netcode': 50, 'used as barrier': 95, 'pit maneuver': 98
     };
     const heuristicFaultA = heuristicMap[incidentType] || 70;
+    const ruleFaultA = ruleMatch?.faultA || 60;
 
-    // CSV Matching
+    // CSV
     try {
       const csvPath = path.join(process.cwd(), 'public', 'simracingstewards_28k.csv');
       const text = fs.readFileSync(csvPath, 'utf8');
       const parsed = Papa.parse(text, { header: true }).data;
-      const query = title.toLowerCase();
-      const queryWords = query.split(' ').filter(w => w.length > 2);
+      const queryWords = title.toLowerCase().split(' ').filter(w => w.length > 2);
 
       for (const row of parsed) {
         if (!row.title || !row.reason) continue;
         const rowText = `${row.title} ${row.reason} ${row.ruling || ''}`.toLowerCase();
         let score = 0;
-        queryWords.forEach(word => { if (rowText.includes(word)) score += 3; });
+        queryWords.forEach(w => { if (rowText.includes(w)) score += 3; });
         if (rowText.includes(incidentType)) score += 5;
-        if (rowText.includes('no further action') || rowText.includes('racing incident')) score -= 4;
-        if (rowText.includes('fault') || rowText.includes('divebomb') || rowText.includes('punted')) score += 4;
         if (score > 0) matches.push({ ...row, score });
       }
       matches.sort((a, b) => b.score - a.score);
       matches = matches.slice(0, 5);
 
-      const validFaults = matches
-        .map(m => parseFloat(m.fault_pct_driver_a))
-        .filter(f => !isNaN(f) && f >= 0 && f <= 100);
-      const csvFaultA = validFaults.length > 0
-        ? validFaults.reduce((a, b) => a + b, 0) / validFaults.length
-        : 60;
-
+      const validFaults = matches.map(m => parseFloat(m.fault_pct_driver_a)).filter(f => !isNaN(f));
+      const csvFaultA = validFaults.length > 0 ? validFaults.reduce((a, b) => a + b, 0) / validFaults.length : 60;
       finalFaultA = Math.round((csvFaultA * 0.4) + (ruleFaultA * 0.4) + (heuristicFaultA * 0.2));
-      finalFaultA = Math.min(98, Math.max(5, finalFaultA));
     } catch (e) {
       console.log('CSV failed:', e);
     }
 
-    const datasetNote = matches.length
-      ? `Dataset: ${matches.length}/5 matches. Top: "${matches[0]?.title}" (${matches[0]?.ruling})`
-      : `No dataset match. Using rule: ${ruleMatch?.desc || 'iRacing Sporting Code'}`;
-
-    const confidence = matches.length >= 3 && ruleMatch ? 'High' :
-                       matches.length >= 1 || ruleMatch ? 'Medium' : 'Low';
-
-    const selectedRule = ruleMatch?.desc || (
-      incidentType === 'divebomb' ? 'SCCA Appendix P: Late moves into Vortex of Danger not allowed' :
-      incidentType === 'weave block' ? 'BMW SIM GT Rule 2: No blocking or reactionary moves' :
-      'iRacing 8.1.1.8: No advantage by leaving racing surface'
-    );
-
-    // === 3. Dynamic Phrases ===
-    const phrases = [
-      "Vortex of Danger", "Dive bomb", "left the door open", "closed the door",
-      "ran into you like you weren't there", "netcode", "used you as a barrier",
-      "pit maneuver", "he was never going to make that pass", "you aren't required to leave the door open",
-      "a lunge at the last second does not mean you have to give him space",
-      "its the responsibility of the overtaking car to do so safely",
-      "you didn't have space to make that move", "turn off the racing line"
-    ];
-    const shuffled = [...phrases].sort(() => Math.random() - 0.5);
-    const selectedPhrases = shuffled.slice(0, Math.floor(Math.random() * 2) + 1);
-
+    finalFaultA = Math.min(98, Math.max(5, finalFaultA));
+    const confidence = matches.length >= 3 && ruleMatch ? 'High' : matches.length >= 1 || ruleMatch ? 'Medium' : 'Low';
+    const selectedRule = ruleMatch?.desc || 'iRacing Sporting Code';
     const titleForPrompt = title === 'incident' ? 'incident' : `"${title}"`;
 
-    // === 4. SAFELY LOAD tips2.txt ===
+    // === 3. LOAD tips2.txt (SAFE + SMART) ===
     let proTip = '';
     try {
       const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
@@ -155,7 +119,7 @@ export async function POST(req) {
           .filter(t => t.tip && t.category);
 
         if (tips.length > 0) {
-          const categoryMap = {
+          const map = {
             divebomb: ['braking', 'overtaking'],
             'vortex exit': ['overtaking'],
             'weave block': ['defense'],
@@ -166,8 +130,7 @@ export async function POST(req) {
             'pit maneuver': ['general'],
             'general contact': ['general', 'defense', 'vision']
           };
-
-          const targets = categoryMap[incidentType] || ['general'];
+          const targets = map[incidentType] || ['general'];
           const matched = tips.filter(t => targets.includes(t.category));
           const pool = matched.length > 0 ? matched : tips;
           const selected = pool[Math.floor(Math.random() * pool.length)];
@@ -178,30 +141,28 @@ export async function POST(req) {
       console.log('tips2.txt failed (non-critical):', e);
     }
 
+    // === 4. PROMPT: FULL A + B HYBRID ===
     const prompt = `You are a neutral, educational sim racing steward for r/simracingstewards.
 Video: ${url}
 Title: ${titleForPrompt}
 Type: ${incidentType}
-${datasetNote}
 Confidence: ${confidence}
-RULES (use the most relevant):
-- ${selectedRule}
-Use ONLY these phrases naturally (1–2 max):
-${selectedPhrases.map(p => `- "${p}"`).join('\n')}
-${proTip ? `Include this tip: "${proTip}"` : ''}
-Tone: calm, educational, community-focused. No blame.
+RULE: ${selectedRule}
+${proTip ? `Include this pro tip naturally in the explanation: "${proTip}"` : ''}
+Tone: calm, educational, community-focused. Teach, don’t blame.
 1. Quote the rule.
 2. State fault %.
-3. Explain what happened (3–4 sentences, use title/type, 1–2 phrases).
+3. Explain what happened in 3–4 detailed sentences.
 4. Give one actionable overtaking tip for Car A.
 5. Give one actionable defense tip for Car B.
 6. Always include spotter advice.
+7. Make it educational and helpful.
 RETURN ONLY JSON:
 {
   "rule": "Text",
   "fault": { "Car A": "${finalFaultA}%", "Car B": "${100 - finalFaultA}%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
-  "explanation": "Summary\n\nTip A: ...\nTip B: ...",
+  "explanation": "3–4 sentence summary\\n\\nTip A: ...\\nTip B: ...\\n\\n${proTip ? proTip : ''}",
   "overtake_tip": "Actionable tip for A",
   "defend_tip": "Actionable tip for B",
   "spotter_advice": { "overtaker": "...", "defender": "..." },
@@ -218,7 +179,7 @@ RETURN ONLY JSON:
       body: JSON.stringify({
         model: 'grok-3',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 700,
+        max_tokens: 800,
         temperature: 0.7,
         top_p: 0.9
       }),
@@ -230,17 +191,17 @@ RETURN ONLY JSON:
     const data = await grok.json();
     const raw = data.choices?.[0]?.message?.content?.trim() || '';
 
-    // === 6. Parse & Enhance ===
+    // === 6. Parse & Finalize ===
     let verdict = {
       rule: selectedRule,
       fault: { "Car A": `${finalFaultA}%`, "Car B": `${100 - finalFaultA}%` },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Contact occurred. Its the responsibility of the overtaking car to do so safely.\n\nTip A: Establish overlap.\nTip B: Hold line.`,
-      overtake_tip: "Wait for overlap + listen to spotter",
-      defend_tip: "React to 'car inside!' call",
+      explanation: `Contact occurred in a ${incidentType} incident. The overtaking car must complete passes safely. Both drivers can improve with better awareness.\n\nTip A: Brake earlier when no overlap.\nTip B: Hold your line firmly.`,
+      overtake_tip: "Establish overlap before committing.",
+      defend_tip: "Stay predictable — don’t weave.",
       spotter_advice: {
         overtaker: "Listen to spotter for defender's line before committing.",
-        defender: "React to spotter's 'car inside!' call immediately."
+        defender: "React to 'car inside!' call immediately."
       },
       confidence
     };
@@ -252,11 +213,11 @@ RETURN ONLY JSON:
       console.log('Parse failed:', e);
     }
 
-    // Inject pro tip
-    if (proTip && confidence !== 'Low') {
+    // Ensure pro tip is in explanation
+    if (proTip && !verdict.explanation.includes(proTip)) {
       verdict.explanation += `\n\n${proTip}`;
-      verdict.pro_tip = proTip;
     }
+    verdict.pro_tip = proTip;
 
     return Response.json({ verdict, matches });
   } catch (err) {
@@ -264,9 +225,7 @@ RETURN ONLY JSON:
     return Response.json({
       verdict: {
         rule: "Error", fault: { "Car A": "0%", "Car B": "0%" },
-        car_identification: "", explanation: err.message,
-        overtake_tip: "", defend_tip: "", spotter_advice: { overtaker: "", defender: "" },
-        confidence: "N/A"
+        explanation: err.message, confidence: "N/A"
       },
       matches: []
     }, { status: 500 });
