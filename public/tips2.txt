@@ -19,3 +19,4 @@ Pit maneuvers = intentional wrecking - 100% fault | general | (Stewards AI)
 
 # YOUR TIPS - Add here (one per line)
 # Example: My best T1 brake point: 120m | braking | (Your Name)
+Turn off the racing line = not being aware of cars around you | Screams noob | Community consensus
