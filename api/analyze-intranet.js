@@ -138,6 +138,46 @@ export async function POST(req) {
 
     const titleForPrompt = title === 'incident' ? 'incident' : `"${title}"`;
 
+    // === 4. SAFELY LOAD tips2.txt ===
+    let proTip = '';
+    try {
+      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      const tipsRes = await fetch(`${baseUrl}/tips2.txt`, { signal: controller.signal });
+      if (tipsRes.ok) {
+        const text = await tipsRes.text();
+        const tips = text.split('\n')
+          .map(l => l.trim())
+          .filter(l => l && l.includes('|'))
+          .map(l => {
+            const [tip, cat, src] = l.split('|').map(s => s.trim());
+            return { tip, category: cat?.toLowerCase(), source: src };
+          })
+          .filter(t => t.tip && t.category);
+
+        if (tips.length > 0) {
+          const categoryMap = {
+            divebomb: ['braking', 'overtaking'],
+            'vortex exit': ['overtaking'],
+            'weave block': ['defense'],
+            'unsafe rejoin': ['general'],
+            'track limits': ['general'],
+            netcode: ['netcode'],
+            'used as barrier': ['defense'],
+            'pit maneuver': ['general'],
+            'general contact': ['general', 'defense', 'vision']
+          };
+
+          const targets = categoryMap[incidentType] || ['general'];
+          const matched = tips.filter(t => targets.includes(t.category));
+          const pool = matched.length > 0 ? matched : tips;
+          const selected = pool[Math.floor(Math.random() * pool.length)];
+          proTip = selected.source ? `${selected.tip} ${selected.source}` : selected.tip;
+        }
+      }
+    } catch (e) {
+      console.log('tips2.txt failed (non-critical):', e);
+    }
+
     const prompt = `You are a neutral, educational sim racing steward for r/simracingstewards.
 Video: ${url}
 Title: ${titleForPrompt}
@@ -148,31 +188,27 @@ RULES (use the most relevant):
 - ${selectedRule}
 Use ONLY these phrases naturally (1–2 max):
 ${selectedPhrases.map(p => `- "${p}"`).join('\n')}
+${proTip ? `Include this tip: "${proTip}"` : ''}
 Tone: calm, educational, community-focused. No blame.
 1. Quote the rule.
 2. State fault %.
 3. Explain what happened (3–4 sentences, use title/type, 1–2 phrases).
 4. Give one actionable overtaking tip for Car A.
 5. Give one actionable defense tip for Car B.
-6. Always include spotter advice:
-   - Overtaker: "Listen to spotter for defender's line before committing."
-   - Defender: "React to spotter's 'car inside!' call immediately."
+6. Always include spotter advice.
 RETURN ONLY JSON:
 {
   "rule": "Text",
   "fault": { "Car A": "${finalFaultA}%", "Car B": "${100 - finalFaultA}%" },
   "car_identification": "Car A: Overtaker. Car B: Defender.",
-  "explanation": "Summary paragraph\n\nTip A: ...\nTip B: ...",
+  "explanation": "Summary\n\nTip A: ...\nTip B: ...",
   "overtake_tip": "Actionable tip for A",
   "defend_tip": "Actionable tip for B",
-  "spotter_advice": {
-    "overtaker": "Listen to spotter for defender's line before committing.",
-    "defender": "React to spotter's 'car inside!' call immediately."
-  },
+  "spotter_advice": { "overtaker": "...", "defender": "..." },
   "confidence": "${confidence}"
 }`;
 
-    // === 4. Call Grok ===
+    // === 5. Call Grok ===
     const grok = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -194,12 +230,12 @@ RETURN ONLY JSON:
     const data = await grok.json();
     const raw = data.choices?.[0]?.message?.content?.trim() || '';
 
-    // === 5. Parse Grok Response ===
+    // === 6. Parse & Enhance ===
     let verdict = {
       rule: selectedRule,
       fault: { "Car A": `${finalFaultA}%`, "Car B": `${100 - finalFaultA}%` },
       car_identification: "Car A: Overtaker. Car B: Defender.",
-      explanation: `Contact occurred due to late move. Its the responsibility of the overtaking car to do so safely.\n\nTip A: Establish overlap before apex.\nTip B: Hold predictable line.`,
+      explanation: `Contact occurred. Its the responsibility of the overtaking car to do so safely.\n\nTip A: Establish overlap.\nTip B: Hold line.`,
       overtake_tip: "Wait for overlap + listen to spotter",
       defend_tip: "React to 'car inside!' call",
       spotter_advice: {
@@ -211,18 +247,15 @@ RETURN ONLY JSON:
 
     try {
       const parsed = JSON.parse(raw);
-      verdict = {
-        rule: parsed.rule || verdict.rule,
-        fault: parsed.fault || verdict.fault,
-        car_identification: parsed.car_identification || verdict.car_identification,
-        explanation: parsed.explanation || verdict.explanation,
-        overtake_tip: parsed.overtake_tip || verdict.overtake_tip,
-        defend_tip: parsed.defend_tip || verdict.defend_tip,
-        spotter_advice: parsed.spotter_advice || verdict.spotter_advice,
-        confidence: parsed.confidence || confidence
-      };
+      verdict = { ...verdict, ...parsed };
     } catch (e) {
       console.log('Parse failed:', e);
+    }
+
+    // Inject pro tip
+    if (proTip && confidence !== 'Low') {
+      verdict.explanation += `\n\n${proTip}`;
+      verdict.pro_tip = proTip;
     }
 
     return Response.json({ verdict, matches });
@@ -230,13 +263,9 @@ RETURN ONLY JSON:
     clearTimeout(timeout);
     return Response.json({
       verdict: {
-        rule: "Error",
-        fault: { "Car A": "0%", "Car B": "0%" },
-        car_identification: "",
-        explanation: err.message,
-        overtake_tip: "",
-        defend_tip: "",
-        spotter_advice: { overtaker: "", defender: "" },
+        rule: "Error", fault: { "Car A": "0%", "Car B": "0%" },
+        car_identification: "", explanation: err.message,
+        overtake_tip: "", defend_tip: "", spotter_advice: { overtaker: "", defender: "" },
         confidence: "N/A"
       },
       matches: []
