@@ -1,12 +1,24 @@
 // api/analyze-intranet.js
-// Version: 1.0.0
-// Date:    2025-11-17
+// Version: 2.1.0 — Human-in-the-loop + Car A/B Identifiers
+// Date: 2025-11-20
+// Features:
+//   • Human selects incident type (no title bias)
+//   • Optional short description
+//   • Optional Car A & Car B identifiers (e.g. "Red Porsche #24")
+//   • Output: "Car A (Red Porsche #24) is the overtaking car..."
+
 import { z } from 'zod';
 import Papa from 'papaparse';
 import fs from 'fs';
 import path from 'path';
 
-const schema = z.object({ url: z.string().url() });
+const schema = z.object({
+  url: z.string().url(),
+  incidentType: z.string().min(1, "Please select an incident type"),
+  description: z.string().optional().default(""),
+  carA: z.string().optional().default(""),
+  carB: z.string().optional().default("")
+});
 
 async function fetchWithRetry(url, options = {}, retries = 3) {
   for (let i = 0; i < retries; i++) {
@@ -26,103 +38,134 @@ export async function POST(req) {
   const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const { url } = schema.parse(await req.json());
+    const { url, incidentType: userType, description, carA, carB } = schema.parse(await req.json());
 
-    // 1. YouTube title
+    // 1. Fetch video title (only for display — NOT used in logic)
     const videoId = url.match(/v=([0-9A-Za-z_-]{11})/)?.[1] || url.match(/youtu\.be\/([0-9A-Za-z_-]{11})/)?.[1] || '';
-    let title = 'incident';
+    let title = 'Sim racing incident';
     if (videoId) {
       try {
         const oembed = await fetch(`https://www.youtube.com/oembed?url=${url}&format=json`, { signal: controller.signal });
-        if (oembed.ok) title = (await oembed.json()).title || 'incident';
+        if (oembed.ok) title = (await oembed.json()).title || title;
       } catch {}
     }
 
-    const lower = title.toLowerCase();
-    let incidentType = 'general contact';
-    if (lower.includes('dive') || lower.includes('brake')) incidentType = 'divebomb';
-    else if (lower.includes('vortex') || lower.includes('exit')) incidentType = 'vortex exit';
-    else if (lower.includes('weave') || lower.includes('block')) incidentType = 'weave block';
-    else if (lower.includes('rejoin') || lower.includes('spin')) incidentType = 'unsafe rejoin';
-    else if (lower.includes('netcode') || lower.includes('lag') || lower.includes('teleport')) incidentType = 'netcode';
-    else if (lower.includes('barrier') || lower.includes('wall') || lower.includes('used you')) incidentType = 'used as barrier';
-    else if (lower.includes('pit') && lower.includes('maneuver')) incidentType = 'pit maneuver';
+    // 2. Map human-selected type to internal key
+    const typeMap = {
+      "Divebomb / Late lunge": "divebomb",
+      "Weave / Block / Defending move": "weave block",
+      "Unsafe rejoin": "unsafe rejoin",
+      "Vortex exit / Draft lift-off": "vortex exit",
+      "Netcode / Lag / Teleport": "netcode",
+      "Used as a barrier / Squeeze": "used as barrier",
+      "Pit-lane incident": "pit-lane incident",
+      "Start-line chaos / T1 pile-up": "t1 chaos",
+      "Intentional wreck / Revenge": "intentional wreck",
+      "Racing incident (no fault)": "racing incident"
+    };
 
-    // 2. CSV + fault
+    const incidentKey = typeMap[userType] || "general contact";
+
+    // 3. CSV lookup using human-selected type + description
     let matches = [];
     let finalFaultA = 60;
     try {
       const csvPath = path.join(process.cwd(), 'public', 'simracingstewards_28k.csv');
       const text = fs.readFileSync(csvPath, 'utf8');
       const parsed = Papa.parse(text, { header: true }).data;
-      const queryWords = title.toLowerCase().split(' ').filter(w => w.length > 2);
+
       for (const row of parsed) {
         if (!row.title) continue;
         const rowText = `${row.title} ${row.reason || ''} ${row.ruling || ''}`.toLowerCase();
         let score = 0;
-        queryWords.forEach(w => { if (rowText.includes(w)) score += 3; });
-        if (rowText.includes(incidentType)) score += 5;
+        if (rowText.includes(incidentKey)) score += 10;
+        if (description && rowText.includes(description.toLowerCase())) score += 8;
         if (score > 0) matches.push({ ...row, score });
       }
       matches.sort((a, b) => b.score - a.score);
       matches = matches.slice(0, 5);
+
       const validFaults = matches.map(m => parseFloat(m.fault_pct_driver_a)).filter(f => !isNaN(f));
       const csvFaultA = validFaults.length > 0 ? validFaults.reduce((a, b) => a + b, 0) / validFaults.length : 60;
-      finalFaultA = Math.round(csvFaultA * 0.5 + 70 * 0.5);
+      finalFaultA = Math.round(csvFaultA * 0.7 + 50 * 0.3);
     } catch (e) {}
 
-    finalFaultA = Math.min(98, Math.max(5, finalFaultA));
-    const confidence = matches.length >= 3 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
+    finalFaultA = Math.min(98, Math.max(2, finalFaultA));
+    const confidence = matches.length >= 4 ? 'Very High' : matches.length >= 2 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
 
-    // 3. Random tip
+    // 4. Tip from tips2.txt
     let proTip = "Both drivers can improve situational awareness.";
     try {
       const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
       const res = await fetch(`${baseUrl}/tips2.txt`, { signal: controller.signal });
       if (res.ok) {
         const lines = (await res.text()).split('\n').map(l => l.trim()).filter(l => l && l.includes('|'));
-        if (lines.length) proTip = lines[Math.floor(Math.random() * lines.length)].split('|')[0].trim();
+        const candidates = lines.filter(l =>
+          l.toLowerCase().includes(incidentKey) ||
+          (description && l.toLowerCase().includes(description.toLowerCase().split(' ')[0]))
+        );
+        if (candidates.length > 0) {
+          proTip = candidates[Math.floor(Math.random() * candidates.length)].split('|')[0].trim();
+        } else if (lines.length > 0) {
+          proTip = lines[Math.floor(Math.random() * lines.length)].split('|')[0].trim();
+        }
       }
     } catch {}
 
-    // 4. Car roles
-    let carA = "the passing car", carB = "the defending car";
-    if (incidentType === 'weave block') { carA = "the defending car"; carB = "the passing car"; }
-    else if (incidentType === 'unsafe rejoin') { carA = "the rejoining car"; carB = "the on-track car"; }
-    else if (incidentType === 'netcode') { carA = "the teleporting car"; carB = "the affected car"; }
-    else if (incidentType === 'used as barrier') { carA = "the car using another as a barrier"; carB = "the car used as a barrier"; }
-    else if (incidentType === 'pit maneuver') { carA = "the car initiating the spin"; carB = "the car being spun"; }
+    // 5. Car roles + optional identifiers
+    let carARole = "the overtaking car", carBRole = "the defending car";
+    switch (incidentKey) {
+      case 'weave block': carARole = "the defending car"; carBRole = "the overtaking car"; break;
+      case 'unsafe rejoin': carARole = "the rejoining car"; carBRole = "the on-track car"; break;
+      case 'netcode': carARole = "the teleporting car"; carBRole = "the affected car"; break;
+      case 'used as barrier': carARole = "the car using another as a barrier"; carBRole = "the car used as a barrier"; break;
+      case 'pit maneuver': carARole = "the car initiating the spin"; carBRole = "the car being spun"; break;
+      case 'intentional wreck': carARole = "the aggressor"; carBRole = "the victim"; break;
+      case 'racing incident': carARole = "Car A"; carBRole = "Car B"; break;
+    }
 
-    const carIdentification = `Car A is ${carA}. Car B is ${carB}.`;
+    const carAIdentifier = carA ? ` (${carA.trim()})` : "";
+    const carBIdentifier = carB ? ` (${carB.trim()})` : "";
+    const carIdentification = `Car A${carAIdentifier} is ${carARole}. Car B${carBIdentifier} is ${carBRole}.`;
 
-    // 5. Grok prompt – forces clean phrasing
-    const prompt = `You are a neutral sim racing steward.
-Video: ${url}
-Title: "${title}"
-Incident type: ${incidentType}
-${carIdentification}
-Fault: Car A ${finalFaultA}%, Car B ${100-finalFaultA}%
+    // 6. Grok prompt — now includes car identifiers
+    const userContext = description ? `Human description: "${description}"\n` : "";
+    const prompt = `You are a senior, neutral sim-racing steward.
+
+Video URL: ${url}
+Video title (context only): "${title}"
+Incident type: ${userType}
+${userContext}
+Car roles: ${carIdentification}
+Suggested fault: Car A ${finalFaultA}%, Car B ${100-finalFaultA}%
 Confidence: ${confidence}
-Tip: "${proTip}"
 
-Start your explanation with: "In this incident involving"
+Write a unique, calm, educational verdict in 3–5 sentences.
+Start with: "In this ${userType.toLowerCase()}..."
+Use Car A${carAIdentifier} and Car B${carBIdentifier} throughout.
+Include one actionable lesson.
 
-Return ONLY valid JSON with this exact structure:
+Return ONLY valid JSON:
 {
   "rule": "relevant rule",
   "fault": { "Car A": "${finalFaultA}%", "Car B": "${100-finalFaultA}%" },
   "car_identification": "${carIdentification}",
-  "explanation": "Start with 'In this incident involving' – 3-4 sentences using Car A and Car B",
-  "overtake_tip": "short tip",
-  "defend_tip": "short tip",
-  "spotter_advice": { "overtaker": "short", "defender": "short" },
+  "explanation": "3–5 unique sentences",
+  "overtake_tip": "specific tip for Car A${carAIdentifier}",
+  "defend_tip": "specific tip for Car B${carBIdentifier}",
+  "spotter_advice": { "overtaker": "tip", "defender": "tip" },
   "confidence": "${confidence}"
 }`;
 
     const grokRes = await fetchWithRetry('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.GROK_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'grok-3', messages: [{ role: 'user', content: prompt }], max_tokens: 600, temperature: 0.7 }),
+      body: JSON.stringify({
+        model: 'grok-3',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 700,
+        temperature: 0.8
+      }),
       signal: controller.signal
     });
 
@@ -130,14 +173,14 @@ Return ONLY valid JSON with this exact structure:
     const data = await grokRes.json();
     const raw = data.choices?.[0]?.message?.content?.trim() || '';
 
-    // 6. Final verdict
     let verdict = {
-      rule: "iRacing Sporting Code",
+      rule: "iRacing Sporting Code / ACC Regulations",
       fault: { "Car A": `${finalFaultA}%`, "Car B": `${100-finalFaultA}%` },
-      explanation: `In this incident involving ${incidentType.toLowerCase()}, contact occurred. ${proTip}`,
+      car_identification: carIdentification,
+      explanation: `In this ${userType.toLowerCase()}, contact occurred between Car A${carAIdentifier} and Car B${carBIdentifier}. ${proTip}`,
       overtake_tip: "Establish overlap before committing.",
-      defend_tip: "Hold your line firmly.",
-      spotter_advice: { overtaker: "Listen to spotter.", defender: "React immediately." },
+      defend_tip: "Hold your line predictably.",
+      spotter_advice: { overtaker: "Wait for clear overlap.", defender: "Don't overreact." },
       confidence
     };
 
@@ -146,26 +189,20 @@ Return ONLY valid JSON with this exact structure:
       verdict = { ...verdict, ...parsed };
     } catch (e) {}
 
-    // Guarantee clean start + support all frontend keys
-    if (!verdict.explanation.toLowerCase().startsWith("in this incident involving")) {
-      verdict.explanation = `In this incident involving ${incidentType.toLowerCase()}, ${verdict.explanation}`;
-    }
-
-    verdict.car_identification = carIdentification;
-    verdict.car_roles = carIdentification;
-    verdict.carRoles = carIdentification;
-
     verdict.explanation += `\n\n${proTip}`;
     verdict.pro_tip = proTip;
+    verdict.video_title = title;
 
     return Response.json({ verdict, matches });
+
   } catch (err) {
     clearTimeout(timeout);
     return Response.json({
       verdict: {
-        rule: "Error", fault: { "Car A": "0%", "Car B": "0%" },
-        car_identification: "Unable to determine roles", car_roles: "Unable to determine roles",
-        explanation: "Temporary issue – please try again",
+        rule: "Error",
+        fault: { "Car A": "—", "Car B": "—" },
+        car_identification: "Unable to process",
+        explanation: "Something went wrong — please try again.",
         overtake_tip: "", defend_tip: "", spotter_advice: { overtaker: "", defender: "" },
         confidence: "N/A"
       },
