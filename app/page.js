@@ -80,7 +80,7 @@ export default function Home() {
       <div className="max-w-6xl mx-auto p-6 md:p-12 space-y-10">
         <div className="text-center">
           <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            The Sim Racing Stewards AI Analysis
+            The Sim Racing Stewards AI
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 mt-4">
             Sim Racing incident analysis • 28,000 real precedents • Expert Tips
