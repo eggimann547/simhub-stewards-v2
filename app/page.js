@@ -55,14 +55,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-
-      {/* Browser tab */}
       <head>
         <title>The Sim Racing Stewards AI Tool</title>
         <meta name="description" content="Human-in-the-loop incident analysis • 28,000 real precedents" />
       </head>
 
-      {/* LOGO */}
       <div className="w-full bg-white dark:bg-gray-800 shadow-xl border-b-4 border-blue-600">
         <div className="w-full px-6 py-8 flex items-center justify-center">
           <img
@@ -103,7 +100,7 @@ export default function Home() {
             </label>
             <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} required
               className="w-full p-5 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-500 text-lg bg-white dark:bg-gray-800">
-              <option value="">— Choose type —</option>
+              <option value="">— Choose incident type —</option>
               <option>Divebomb / Late lunge</option>
               <option>Weave / Block / Defending move</option>
               <option>Unsafe rejoin</option>
@@ -114,6 +111,21 @@ export default function Home() {
               <option>Start-line chaos / T1 pile-up</option>
               <option>Intentional wreck / Revenge</option>
               <option>Racing incident (no fault)</option>
+              <option>Crowd-strike / Accordion effect</option>
+              <option>Blocking while being lapped</option>
+              <option>Blue-flag violation / Ignoring blue flags</option>
+              <option>Brake test</option>
+              <option>Cutting the track / Track limits abuse</option>
+              <option>False start / Jump start</option>
+              <option>Illegal overtake under SC/VSC/FCY</option>
+              <option>Move under braking</option>
+              <option>Over-aggressive defense (2+ moves)</option>
+              <option>Punt / Rear-end under braking</option>
+              <option>Re-entry after off-track (gaining advantage)</option>
+              <option>Side-by-side contact mid-corner</option>
+              <option>Track rejoin blocking racing line</option>
+              <option>Unsportsmanlike conduct / Chat abuse</option>
+              <option>Wrong way / Ghosting violation</option>
             </select>
           </div>
 
@@ -164,7 +176,6 @@ export default function Home() {
           </button>
         </form>
 
-        {/* RESULTS */}
         <div className="flex flex-col lg:flex-row gap-8">
           {thumbnail && (
             <div className="lg:w-1/2">
