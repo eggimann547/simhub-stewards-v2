@@ -57,7 +57,7 @@ export default function Home() {
     <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <head>
         <title>The Sim Racing Stewards AI Tool</title>
-        <meta name="description" content="Human-in-the-loop incident analysis • 28,000 real precedents" />
+        <meta name="description" content="Sim Racing incident analysis • 28,000 real precedents • Expert Tips" />
       </head>
 
       <div className="w-full bg-white dark:bg-gray-800 shadow-xl border-b-4 border-blue-600">
