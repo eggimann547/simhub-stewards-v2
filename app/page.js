@@ -72,7 +72,7 @@ export default function Home() {
             }}
           />
           <div className="hidden w-full max-w-5xl h-40 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl items-center justify-center text-white font-bold text-4xl shadow-2xl">
-            The Sim Racing Stewards AI Tool
+            The Sim Racing Stewards AI Analysis
           </div>
         </div>
       </div>
