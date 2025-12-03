@@ -1,5 +1,5 @@
 // pages/api/analyze-intranet.js
-// Version: December 03, 2025 — Title Context Edition (no API key needed)
+// Version: 2.4.0 — Manual Title for Reddit/Non-Video Support (December 03, 2025)
 
 import { z } from 'zod';
 import Papa from 'papaparse';
@@ -7,49 +7,62 @@ import fs from 'fs';
 import path from 'path';
 
 const schema = z.object({
-  url: z.string().url(),
-  incidentType: z.string().min(1),
+  url: z.string().optional().default(""),  // Now optional (for non-video cases)
+  incidentType: z.string().min(1, "Please select an incident type"),
   carA: z.string().optional().default(""),
   carB: z.string().optional().default(""),
   stewardNotes: z.string().optional().default(""),
-  overrideFaultA: z.coerce.number().min(0).max(100).optional().nullable()
+  overrideFaultA: z.coerce.number().min(0).max(100).optional().nullable(),
+  manualTitle: z.string().optional().default("")  // ← NEW: For Reddit titles or keywords
 });
+
+async function fetchWithRetry(url, options = {}, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, { ...options });
+      if (res.ok) return res;
+      if (i === retries - 1) throw new Error(`Fetch failed: ${res.status}`);
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    } catch (e) {
+      if (i === retries - 1) throw e;
+    }
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const timeout = setTimeout(() => res.status(504).json({ error: "Timeout" }), 28000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
     const body = req.body;
     const {
-      url,
+      url = "",
       incidentType: userType,
       carA = "",
       carB = "",
       stewardNotes = "",
-      overrideFaultA = null
+      overrideFaultA = null,
+      manualTitle = ""
     } = schema.parse(body);
 
     const humanInput = stewardNotes.trim();
 
-    // 1. Extract video ID + fetch title via oEmbed (no API key!)
-    const videoIdMatch = url.match(/(?:v=|youtu\.be\/|embed\/)([0-9A-Za-z_-]{11})/);
-    const videoId = videoIdMatch ? videoIdMatch[1] : null;
-    if (!videoId) throw new Error("Invalid YouTube URL");
-
-    let title = "Sim racing incident";
-    try {
-      const oembed = await fetch(`https://www.youtube.com/oembed?url=${url}&format=json`, { signal: AbortSignal.timeout(5000) });
-      if (oembed.ok) {
-        const data = await oembed.json();
-        title = data.title || title;
-      }
-    } catch (e) {
-      console.warn("Title fetch failed, using fallback");
+    // 1. Fetch title if URL provided (oEmbed)
+    let title = 'Sim racing incident';
+    const videoId = url.match(/(?:v=|youtu\.be\/)([0-9A-Za-z_-]{11})/)?.[1];
+    if (videoId) {
+      try {
+        const oembed = await fetch(`https://www.youtube.com/oembed?url=${url}&format=json`, { signal: controller.signal });
+        if (oembed.ok) title = (await oembed.json()).title || title;
+      } catch {}
     }
 
-    // 2. Incident type → internal key
+    // 2. NEW: Use manualTitle as primary/fallback
+    const effectiveTitle = manualTitle.trim() || title;
+
+    // 3. Incident key mapping (unchanged)
     const typeMap = {
       "Divebomb / Late lunge": "divebomb",
       "Weave / Block / Defending move": "weave block",
@@ -65,6 +78,7 @@ export default async function handler(req, res) {
       "Blocking while being lapped": "blue flag block",
       "Blue-flag violation / Ignoring blue flags": "blue flag",
       "Brake test": "brake test",
+      "Brake check": "brake test",
       "Cutting the track / Track limits abuse": "track limits",
       "False start / Jump start": "jump start",
       "Illegal overtake under SC/VSC/FCY": "illegal overtake sc",
@@ -79,7 +93,7 @@ export default async function handler(req, res) {
     };
     const incidentKey = typeMap[userType] || "general contact";
 
-    // 3. Load CSV + find best matches (title now helps gently)
+    // 4. CSV lookup (enhanced with effectiveTitle)
     let matches = [];
     let finalFaultA = 60;
     let confidence = "Low";
@@ -88,123 +102,136 @@ export default async function handler(req, res) {
       finalFaultA = Math.round(overrideFaultA);
       confidence = "Human Override";
     } else {
-      const csvPath = path.join(process.cwd(), 'public', 'simracingstewards_28k.csv');
-      const text = fs.readFileSync(csvPath, 'utf8');
-      const parsed = Papa.parse(text, { header: true }).data;
+      try {
+        const csvPath = path.join(process.cwd(), 'public', 'simracingstewards_28k.csv');
+        const text = fs.readFileSync(csvPath, 'utf8');
+        const parsed = Papa.parse(text, { header: true }).data;
 
-      const titleWords = title.toLowerCase().match(/\w+/g) || [];
-      const inputWords = humanInput.toLowerCase().match(/\w+/g) || [];
+        for (const row of parsed) {
+          if (!row.title) continue;
+          const rowText = `${row.title} ${row.reason || ''} ${row.ruling || ''}`.toLowerCase();
+          let score = 0;
+          if (rowText.includes(incidentKey)) score += 10;
+          if (humanInput && rowText.includes(humanInput.toLowerCase().substring(0, 30))) score += 8;
+          if (effectiveTitle && rowText.includes(effectiveTitle.toLowerCase().substring(0, 30))) score += 5;  // ← NEW: Gentle title boost
+          if (score > 0) matches.push({ ...row, score });
+        }
+        matches.sort((a, b) => b.score - a.score);
+        matches = matches.slice(0, 5);
 
-      for (const row of parsed) {
-        if (!row.title) continue;
-        const rowText = `${row.title} ${row.reason || ''} ${row.ruling || ''}`.toLowerCase();
-        let score = 0;
-
-        if (rowText.includes(incidentKey)) score += 15;
-        inputWords.slice(0, 10).forEach(w => { if (rowText.includes(w)) score += 3; });
-        titleWords.slice(0, 6).forEach(w => { if (rowText.includes(w)) score += 1; }); // gentle title boost
-
-        if (score > 0) matches.push({ ...row, score });
+        const validFaults = matches.map(m => parseFloat(m.fault_pct_driver_a)).filter(f => !isNaN(f));
+        const csvFaultA = validFaults.length > 0 ? validFaults.reduce((a, b) => a + b, 0) / validFaults.length : 60;
+        finalFaultA = Math.round(csvFaultA * 0.7 + 50 * 0.3);
+        confidence = matches.length >= 4 ? 'Very High' : matches.length >= 2 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
+      } catch (e) {
+        console.error(e);
       }
-
-      matches.sort((a, b) => b.score - a.score);
-      matches = matches.slice(0, 5);
-
-      const valid = matches.map(m => parseFloat(m.fault_pct_driver_a)).filter(n => !isNaN(n));
-      const avgFromCsv = valid.length > 0 ? valid.reduce((a, b) => a + b, 0) / valid.length : 60;
-
-      finalFaultA = Math.round(avgFromCsv * 0.75 + 50 * 0.25); // 75% precedent, 25% neutral
-      confidence = matches.length >= 4 ? "Very High" : matches.length >= 2 ? "High" : matches.length >= 1 ? "Medium" : "Low";
     }
 
     finalFaultA = Math.min(98, Math.max(2, finalFaultA));
 
-    // 4. Pro tip from tips2.txt
+    // 5. Pro tip
     let proTip = "Both drivers can improve situational awareness.";
     try {
       const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-      const tipRes = await fetch(`${baseUrl}/tips2.txt`, { signal: AbortSignal.timeout(5000) });
+      const tipRes = await fetch(`${baseUrl}/tips2.txt`, { signal: controller.signal });
       if (tipRes.ok) {
-        const lines = (await tipRes.text()).split('\n').filter(l => l.includes('|'));
-        const candidates = lines.filter(l => l.toLowerCase().includes(incidentKey));
+        const lines = (await tipRes.text()).split('\n').map(l => l.trim()).filter(l => l.includes('|'));
+        const candidates = lines.filter(l =>
+          l.toLowerCase().includes(incidentKey) ||
+          (humanInput && l.toLowerCase().includes(humanInput.toLowerCase().split(' ')[0]))
+        );
         if (candidates.length) proTip = candidates[Math.floor(Math.random() * candidates.length)].split('|')[0].trim();
       }
     } catch {}
 
-    // 5. Car roles
-    let carARole = "the overtaking car";
-    let carBRole = "the defending car";
+    // 6. Car roles
+    let carARole = "the overtaking car", carBRole = "the defending car";
     switch (incidentKey) {
-      case "weave block": [carARole, carBRole] = ["the defending car", "the overtaking car"]; break;
-      case "unsafe rejoin": [carARole, carBRole] = ["the rejoining car", "the on-track car"]; break;
-      case "netcode": [carARole, carBRole] = ["the teleporting car", "the affected car"]; break;
-      case "brake test": [carARole, carBRole] = ["the braking car", "the following car"]; break;
-      case "racing incident": [carARole, carBRole] = ["Car A", "Car B"]; break;
+      case 'weave block': [carARole, carBRole] = ["the defending car", "the overtaking car"]; break;
+      case 'unsafe rejoin': [carARole, carBRole] = ["the rejoining car", "the on-track car"]; break;
+      case 'netcode': [carARole, carBRole] = ["the teleporting car", "the affected car"]; break;
+      case 'used as barrier': [carARole, carBRole] = ["the car using another as a barrier", "the car used as a barrier"]; break;
+      case 'intentional wreck': [carARole, carBRole] = ["the aggressor", "the victim"]; break;
+      case 'racing incident': [carARole, carBRole] = ["Car A", "Car B"]; break;
     }
 
-    const carAId = carA ? ` (${carA.trim()})` : "";
-    const carBId = carB ? ` (${carB.trim()})` : "";
-    const carIdentification = `Car A${carAId} is ${carARole}. Car B${carBId} is ${carBRole}.`;
+    const carAIdentifier = carA ? ` (${carA.trim()})` : "";
+    const carBIdentifier = carB ? ` (${carB.trim()})` : "";
+    const carIdentification = `Car A${carAIdentifier} is ${carARole}. Car B${carBIdentifier} is ${carBRole}.`;
 
-    // 6. Final Grok prompt — now includes title context
-    const humanContext = humanInput ? `HUMAN STEWARD NOTES (must be reflected verbatim):\n"${humanInput}"\n\n` : "";
-    const titleContext = `SUBMITTER'S TITLE PERSPECTIVE: "${title}"\n(Use only for subtle context — never contradict steward notes)\n\n`;
+    // 7. Grok prompt (enhanced with effectiveTitle)
+    const humanContext = humanInput ? `HUMAN STEWARD OBSERVATIONS (must be reflected exactly, no contradictions):\n"${humanInput}"\n\n` : "";
+    const titleContext = effectiveTitle ? `SUBMITTER PERSPECTIVE (title): "${effectiveTitle}"\n` : "";
 
-    const prompt = `${humanContext}${titleContext}You are a senior, neutral sim-racing steward.
+    const prompt = `You are a senior, neutral sim-racing steward writing an official verdict.
 
+${humanContext}${titleContext}Video URL (if provided): ${url}
 Incident type: ${userType}
-${carIdentification}
-Fault split: Car A${carAId} ${finalFaultA}% — Car B${carBId} ${100 - finalFaultA}%
+Car identification: ${carIdentification}
+Fault allocation: Car A${carAIdentifier} ${finalFaultA}% — Car B${carBIdentifier} ${100 - finalFaultA}%
 Confidence: ${confidence}
 
-Write a calm, professional 3–5 sentence verdict.
+Write a unique, calm, educational verdict in 3–5 sentences.
 Start with: "In this ${userType.toLowerCase()}..."
+Use Car A${carAIdentifier} and Car B${carBIdentifier} throughout.
+If human observations were provided, base the entire explanation on them — do not contradict or ignore them.
 End with this exact pro tip: "${proTip}"
 
-Return ONLY valid JSON with these keys:
+Return ONLY valid JSON:
 {
-  "rule": "relevant rule",
-  "fault": { "Car A${carAId}": "${finalFaultA}%", "Car B${carBId}": "${100-finalFaultA}%" },
+  "rule": "relevant rule(s)",
+  "fault": { "Car A${carAIdentifier}": "${finalFaultA}%", "Car B${carBIdentifier}": "${100-finalFaultA}%" },
   "car_identification": "${carIdentification}",
-  "explanation": "3–5 sentences",
+  "explanation": "3–5 unique sentences",
   "pro_tip": "${proTip}",
   "confidence": "${confidence}"
 }`;
 
-    const grokRes = await fetch('https://api.x.ai/v1/chat/completions', {
+    const grokRes = await fetchWithRetry('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.GROK_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { Authorization: `Bearer ${process.env.GROK_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'grok-3',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 700,
         temperature: 0.7
-      })
+      }),
+      signal: controller.signal
     });
 
     clearTimeout(timeout);
     const data = await grokRes.json();
-    const raw = data.choices?.[0]?.message?.content?.trim() || '{}';
+    const raw = data.choices?.[0]?.message?.content?.trim() || '';
 
     let verdict = {
-      rule: "iRacing Sporting Code / LFM Regulations",
-      fault: { [`Car A${carAId}`]: `${finalFaultA}%`, [`Car B${carBId}`]: `${100-finalFaultA}%` },
+      rule: "iRacing Sporting Code / ACC LFM Regulations",
+      fault: { [`Car A${carAIdentifier}`]: `${finalFaultA}%`, [`Car B${carBIdentifier}`]: `${100-finalFaultA}%` },
       car_identification: carIdentification,
-      explanation: `In this ${userType.toLowerCase()}, contact occurred. ${proTip}`,
+      explanation: `In this ${userType.toLowerCase()}, contact occurred between Car A${carAIdentifier} and Car B${carBIdentifier}.\n\n${proTip}`,
       pro_tip: proTip,
       confidence
     };
 
-    try { Object.assign(verdict, JSON.parse(raw)); } catch {}
+    try { Object.assign(verdict, JSON.parse(raw)); } catch (e) {}
+
+    verdict.video_title = effectiveTitle; // For display
 
     res.status(200).json({ verdict, matches: matches.slice(0, 5) });
 
   } catch (err) {
     clearTimeout(timeout);
     console.error(err);
-    res.status(500).json({ error: err.message || "Server error" });
+    res.status(500).json({
+      verdict: {
+        rule: "Error",
+        fault: { "Car A": "—", "Car B": "—" },
+        car_identification: "Unable to process",
+        explanation: "Something went wrong — please try again.",
+        pro_tip: "",
+        confidence: "N/A"
+      },
+      matches: []
+    });
   }
 }
