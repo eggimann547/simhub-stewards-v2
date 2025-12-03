@@ -99,34 +99,35 @@ export default function Home() {
               Incident Type <span className="text-red-500">(required)</span>
             </label>
             <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} required
-              className="w-full p-5 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-500 text-lg bg-white dark:bg-gray-800">
-              <option value="">— Choose incident type —</option>
-              <option>Divebomb / Late lunge</option>
-              <option>Weave / Block / Defending move</option>
-              <option>Unsafe rejoin</option>
-              <option>Vortex exit / Draft lift-off</option>
-              <option>Netcode / Lag / Teleport</option>
-              <option>Used as a barrier / Squeeze</option>
-              <option>Pit-lane incident</option>
-              <option>Start-line chaos / T1 pile-up</option>
-              <option>Intentional wreck / Revenge</option>
-              <option>Racing incident (no fault)</option>
-              <option>Crowd-strike / Accordion effect</option>
-              <option>Blocking while being lapped</option>
-              <option>Blue-flag violation / Ignoring blue flags</option>
-              <option>Brake Check</option>
-              <option>Cutting the track / Track limits abuse</option>
-              <option>False start / Jump start</option>
-              <option>Illegal overtake under SC/VSC/FCY</option>
-              <option>Move under braking</option>
-              <option>Over-aggressive defense (2+ moves)</option>
-              <option>Punt / Rear-end under braking</option>
-              <option>Re-entry after off-track (gaining advantage)</option>
-              <option>Side-by-side contact mid-corner</option>
-              <option>Track rejoin blocking racing line</option>
-              <option>Unsportsmanlike conduct / Chat abuse</option>
-              <option>Wrong way / Ghosting violation</option>
-            </select>
+  className="w-full p-5 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-500 text-lg bg-white dark:bg-gray-800">
+  <option value="">— Choose incident type —</option>
+  <option>Divebomb / Late lunge</option>
+  <option>Weave / Block / Defending move</option>
+  <option>Unsafe rejoin</option>
+  <option>Vortex exit / Draft lift-off</option>
+  <option>Netcode / Lag / Teleport</option>
+  <option>Used as a barrier / Squeeze</option>
+  <option>Pit-lane incident</option>
+  <option>Start-line chaos / T1 pile-up</option>
+  <option>Intentional wreck / Revenge</option>
+  <option>Racing incident (no fault)</option>
+  <option>Crowd-strike / Accordion effect</option>
+  <option>Blocking while being lapped</option>
+  <option>Blue-flag violation / Ignoring blue flags</option>
+  <option>Brake test</option>
+  <option>Brake check</option>              {/* ← NEW — covers everyone */}
+  <option>Cutting the track / Track limits abuse</option>
+  <option>False start / Jump start</option>
+  <option>Illegal overtake under SC/VSC/FCY</option>
+  <option>Move under braking</option>
+  <option>Over-aggressive defense (2+ moves)</option>
+  <option>Punt / Rear-end under braking</option>
+  <option>Re-entry after off-track (gaining advantage)</option>
+  <option>Side-by-side contact mid-corner</option>
+  <option>Track rejoin blocking racing line</option>
+  <option>Unsportsmanlike conduct / Chat abuse</option>
+  <option>Wrong way / Ghosting violation</option>
+</select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
