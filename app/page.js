@@ -114,7 +114,7 @@ export default function Home() {
               <option>Crowd-strike / Accordion effect</option>
               <option>Blocking while being lapped</option>
               <option>Blue-flag violation / Ignoring blue flags</option>
-              <option>Brake test</option>
+              <option>Brake Check</option>
               <option>Cutting the track / Track limits abuse</option>
               <option>False start / Jump start</option>
               <option>Illegal overtake under SC/VSC/FCY</option>
