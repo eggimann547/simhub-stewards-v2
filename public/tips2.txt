@@ -309,3 +309,13 @@ To avoid the Vortex, the following car must back off if the lead lifts early | v
 The Vortex is real in F1-style cars — don't tailgate in high-speed drafts | draft lift-off | (YouTube: Chain Bear)
 Exit Vortex squeezes are avoidable — give room on corner exit | vortex exit | (28k data: 82% fault on squeezer)
 Understand the Vortex of Danger: entry blind spot + exit aero loss = recipe for disaster | vortex exit | (Randy Pobst coaching)
+
+// From tip_miner.py AI Agent
+
+Practice maintaining momentum through corners by experimenting with different lines and braking points to shave off crucial seconds. | general | (Reddit)
+Adjust in-game settings like turning off STM and setting Traction Control to Sport to find a balance that suits your driving style. | general | (Reddit)
+Focus on consistency during practice laps to build confidence for competitive events, especially under time pressure. | mental | (Reddit)
+When recovering from a penalty or incident, prioritize clean overtakes and avoid aggressive moves that could lead to further collisions. | overtaking | (Reddit)
+Be cautious when following a faster driver; maintain a safe distance during overtaking attempts to avoid unintended contact. | overtaking | (Reddit)
+If pushing another driver on a straight to close a gap, ensure it’s done safely to prevent forcing them off track or into a mistake. | overtaking | (Reddit)
+Analyze incidents post-race to understand fault and improve decision-making in future battles, especially in tight racing situations. | mental | (Reddit)
