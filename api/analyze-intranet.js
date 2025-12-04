@@ -129,7 +129,7 @@ export default async function handler(req, res) {
     finalFaultA = Math.min(98, Math.max(2, finalFaultA));
 
     // 4. Pro Tip — 100% reliable + full coverage
-    let proTip = "Both drivers can improve situational awareness.";
+    let proTip = "TheSimRacingStewards Tip: Both drivers can improve situational awareness.";
 
     try {
       const tipPath = path.join(process.cwd(), 'public', 'tips2.txt');
