@@ -91,35 +91,32 @@ export default async function handler(req, res) {
     };
     const incidentKey = typeMap[userType] || "general contact";
 
-    // 3. NEW: Load curated precedents (replaces 28k CSV)
-    let precedentCases = [];
-    let confidence = "Medium"; // Default — can be upgraded later
+    // 3. Load curated precedents
+let precedentCases = [];
+let confidence = "Medium";
 
-    try {
-      const curatedPath = path.join(process.cwd(), 'public', 'precedents_curated.csv');
-      const text = fs.readFileSync(curatedPath, 'utf8');
-      const parsed = Papa.parse(text, { header: true }).data;
+try {
+  const curatedPath = path.join(process.cwd(), 'public', 'precedents_curated.csv');
+  const text = fs.readFileSync(curatedPath, 'utf8');
+  const parsed = Papa.parse(text, { header: true }).data;
 
-      const matches = parsed
-        .filter(row => row.incident_type === userType)
-        .sort(() => 0.5 - Math.random()) // Randomize order
-        .slice(0, 3);
+  const matches = parsed.filter(row => row.incident_type === userType).slice(0, 3);
 
-      precedentCases = matches.map(m => ({
-        video: m.youtube_url || null,
-        title: m.title || "Sim Racing Incident",
-        ruling: m.ruling || "No ruling",
-        reason: m.reason || "No reason provided",
-        faultA: parseInt(m.fault_a) || 50,
-        thread: m.thread_id ? `https://old.reddit.com/r/simracingstewards/comments/${m.thread_id}/` : null
-      }));
+  precedentCases = matches.map(m => ({
+    video: m.youtube_url || null,
+    title: m.title || "Sim Racing Incident",
+    ruling: m.ruling || "No ruling",
+    reason: m.reason || "No reason",
+    faultA: parseInt(m.fault_a) || 50,
+    thread: m.thread_id ? `https://old.reddit.com/r/simracingstewards/comments/${m.thread_id}/` : null
+  }));
 
-      if (precedentCases.length >= 3) confidence = "Very High";
-      else if (precedentCases.length >= 2) confidence = "High";
-      else if (precedentCases.length >= 1) confidence = "Medium";
-    } catch (e) {
-      console.warn("Curated precedents failed to load:", e.message);
-    }
+  if (precedentCases.length >= 3) confidence = "Very High";
+  else if (precedentCases.length >= 2) confidence = "High";
+  else if (precedentCases.length >= 1) confidence = "Medium";
+} catch (e) {
+  console.warn("Curated precedents failed:", e.message);
+}
 
     // 4. Fault % — simple average from curated precedents
     let finalFaultA = 60;
