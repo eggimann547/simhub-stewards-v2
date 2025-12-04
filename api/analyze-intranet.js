@@ -1,5 +1,5 @@
 // pages/api/analyze-intranet.js
-// Version: 2.4.0 — Manual Title for Reddit/Non-Video Support (December 03, 2025)
+// Version: 2.5.0 — Full Incident Coverage + Bulletproof Pro Tips (December 03, 2025)
 
 import { z } from 'zod';
 import Papa from 'papaparse';
@@ -7,13 +7,13 @@ import fs from 'fs';
 import path from 'path';
 
 const schema = z.object({
-  url: z.string().optional().default(""),  // Now optional (for non-video cases)
+  url: z.string().optional().default(""),
   incidentType: z.string().min(1, "Please select an incident type"),
   carA: z.string().optional().default(""),
   carB: z.string().optional().default(""),
   stewardNotes: z.string().optional().default(""),
   overrideFaultA: z.coerce.number().min(0).max(100).optional().nullable(),
-  manualTitle: z.string().optional().default("")  // ← NEW: For Reddit titles or keywords
+  manualTitle: z.string().optional().default("")
 });
 
 async function fetchWithRetry(url, options = {}, retries = 3) {
@@ -36,7 +36,6 @@ export default async function handler(req, res) {
   const timeout = setTimeout(() => controller.abort(), 30000);
 
   try {
-    const body = req.body;
     const {
       url = "",
       incidentType: userType,
@@ -45,11 +44,11 @@ export default async function handler(req, res) {
       stewardNotes = "",
       overrideFaultA = null,
       manualTitle = ""
-    } = schema.parse(body);
+    } = schema.parse(req.body);
 
     const humanInput = stewardNotes.trim();
 
-    // 1. Fetch title if URL provided (oEmbed)
+    // 1. Title resolution
     let title = 'Sim racing incident';
     const videoId = url.match(/(?:v=|youtu\.be\/)([0-9A-Za-z_-]{11})/)?.[1];
     if (videoId) {
@@ -58,11 +57,9 @@ export default async function handler(req, res) {
         if (oembed.ok) title = (await oembed.json()).title || title;
       } catch {}
     }
-
-    // 2. NEW: Use manualTitle as primary/fallback
     const effectiveTitle = manualTitle.trim() || title;
 
-    // 3. Incident key mapping (unchanged)
+    // 2. Incident key mapping
     const typeMap = {
       "Divebomb / Late lunge": "divebomb",
       "Weave / Block / Defending move": "weave block",
@@ -93,7 +90,7 @@ export default async function handler(req, res) {
     };
     const incidentKey = typeMap[userType] || "general contact";
 
-    // 4. CSV lookup (enhanced with effectiveTitle)
+    // 3. CSV precedent matching
     let matches = [];
     let finalFaultA = 60;
     let confidence = "Low";
@@ -113,9 +110,10 @@ export default async function handler(req, res) {
           let score = 0;
           if (rowText.includes(incidentKey)) score += 10;
           if (humanInput && rowText.includes(humanInput.toLowerCase().substring(0, 30))) score += 8;
-          if (effectiveTitle && rowText.includes(effectiveTitle.toLowerCase().substring(0, 30))) score += 5;  // ← NEW: Gentle title boost
+          if (effectiveTitle && rowText.includes(effectiveTitle.toLowerCase().substring(0, 30))) score += 5;
           if (score > 0) matches.push({ ...row, score });
         }
+
         matches.sort((a, b) => b.score - a.score);
         matches = matches.slice(0, 5);
 
@@ -124,50 +122,64 @@ export default async function handler(req, res) {
         finalFaultA = Math.round(csvFaultA * 0.7 + 50 * 0.3);
         confidence = matches.length >= 4 ? 'Very High' : matches.length >= 2 ? 'High' : matches.length >= 1 ? 'Medium' : 'Low';
       } catch (e) {
-        console.error(e);
+        console.error("CSV error:", e);
       }
     }
 
     finalFaultA = Math.min(98, Math.max(2, finalFaultA));
 
-    // 5. Pro Tip — 100% working on Vercel (direct file read)
-let proTip = "Both drivers can improve situational awareness.";
+    // 4. Pro Tip — 100% reliable + full coverage
+    let proTip = "Both drivers can improve situational awareness.";
 
-try {
-  const tipPath = path.join(process.cwd(), 'public', 'tips2.txt');
-  const text = fs.readFileSync(tipPath, 'utf8');
+    try {
+      const tipPath = path.join(process.cwd(), 'public', 'tips2.txt');
+      const text = fs.readFileSync(tipPath, 'utf8');
+      const lines = text
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.includes('|') && l.split('|')[0].length > 10);
 
-  const lines = text
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l.includes('|') && l.split('|')[0].length > 10);
+      const aliases = {
+        "divebomb": ["divebomb", "dive", "lunge", "late lunge"],
+        "weave block": ["weave block", "weave", "block", "blocking", "defending", "defense"],
+        "unsafe rejoin": ["unsafe rejoin", "rejoin", "re-join", "rejoining", "came back on", "returned to track"],
+        "vortex exit": ["vortex", "draft lift-off", "lift-off", "lift in draft", "vortex of danger"],
+        "netcode": ["netcode", "lag", "teleport", "desync", "latency"],
+        "used as barrier": ["used as barrier", "squeeze", "barrier", "squeezed"],
+        "pit-lane incident": ["pit-lane", "pit lane", "pit entry", "pit exit"],
+        "t1 chaos": ["t1", "start-line", "lap 1", "pile-up", "t1 pile-up", "start chaos"],
+        "intentional wreck": ["intentional wreck", "revenge", "wrecking", "punish", "pit maneuver"],
+        "racing incident": ["racing incident", "no fault", "50/50", "both at fault"],
+        "accordion": ["accordion", "crowd-strike", "concertina"],
+        "blue flag block": ["blue flag block", "blocking while lapped", "lapped block"],
+        "blue flag": ["blue flag", "lapped", "yield", "blue flags"],
+        "brake test": ["brake test", "brake check", "brake checked"],
+        "track limits": ["track limits", "cutting", "track cut", "off-track", "corner cut"],
+        "jump start": ["jump start", "false start", "rolling start"],
+        "illegal overtake sc": ["illegal overtake", "sc", "vsc", "fcy", "safety car", "yellow"],
+        "move under braking": ["move under braking", "dive under braking", "braking move"],
+        "aggressive defense": ["aggressive defense", "over-aggressive", "2+ moves", "weaving"],
+        "punt": ["punt", "rear-end", "shunt", "nose to tail"],
+        "rejoin advantage": ["rejoin advantage", "gaining advantage", "off-track gain"],
+        "side contact": ["side contact", "side-by-side", "wheel to wheel", "mid-corner"],
+        "rejoin block": ["rejoin block", "blocking racing line", "rejoin across"],
+        "unsportsmanlike": ["unsportsmanlike", "chat abuse", "toxicity", "toxic", "abuse"],
+        "wrong way": ["wrong way", "ghosting", "reverse", "driving backwards"]
+      };
 
-  const aliases = {
-    "unsafe rejoin": ["unsafe rejoin", "rejoin", "re-join", "rejoining", "came back on"],
-    "divebomb": ["divebomb", "dive", "late lunge"],
-    "brake test": ["brake test", "brake check"],
-    "weave block": ["weave", "block", "defending"],
-    "netcode": ["netcode", "lag", "teleport"],
-    "punt": ["punt", "rear-end", "shunt"]
-    // add more whenever you want
-  };
+      const terms = aliases[incidentKey] || [incidentKey];
+      const candidates = lines.filter(line =>
+        terms.some(t => line.toLowerCase().includes(t))
+      );
 
-  const terms = aliases[incidentKey] || [incidentKey];
+      if (candidates.length > 0) {
+        proTip = candidates[Math.floor(Math.random() * candidates.length)].split('|')[0].trim();
+      }
+    } catch (e) {
+      console.warn("Pro tip failed:", e.message);
+    }
 
-  const candidates = lines.filter(line =>
-    terms.some(t => line.toLowerCase().includes(t))
-  );
-
-  if (candidates.length > 0) {
-    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-    proTip = chosen.split('|')[0].trim();
-  }
-} catch (e) {
-  // If even this fails (impossible), we keep the default
-  console.warn("Tip loading failed (should never happen):", e.message);
-}
-
-    // 6. Car roles
+    // 5. Car roles
     let carARole = "the overtaking car", carBRole = "the defending car";
     switch (incidentKey) {
       case 'weave block': [carARole, carBRole] = ["the defending car", "the overtaking car"]; break;
@@ -182,12 +194,11 @@ try {
     const carBIdentifier = carB ? ` (${carB.trim()})` : "";
     const carIdentification = `Car A${carAIdentifier} is ${carARole}. Car B${carBIdentifier} is ${carBRole}.`;
 
-    // 7. Grok prompt (enhanced with effectiveTitle)
+    // 6. Grok prompt
     const humanContext = humanInput ? `HUMAN STEWARD OBSERVATIONS (must be reflected exactly, no contradictions):\n"${humanInput}"\n\n` : "";
     const titleContext = effectiveTitle ? `SUBMITTER PERSPECTIVE (title): "${effectiveTitle}"\n` : "";
 
     const prompt = `You are a senior, neutral sim-racing steward writing an official verdict.
-
 ${humanContext}${titleContext}Video URL (if provided): ${url}
 Incident type: ${userType}
 Car identification: ${carIdentification}
@@ -235,9 +246,9 @@ Return ONLY valid JSON:
       confidence
     };
 
-    try { Object.assign(verdict, JSON.parse(raw)); } catch (e) {}
+    try { Object.assign(verdict, JSON.parse(raw)); } catch {}
 
-    verdict.video_title = effectiveTitle; // For display
+    verdict.video_title = effectiveTitle;
 
     res.status(200).json({ verdict, matches: matches.slice(0, 5) });
 
