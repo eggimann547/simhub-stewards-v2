@@ -130,40 +130,37 @@ export default async function handler(req, res) {
 
     finalFaultA = Math.min(98, Math.max(2, finalFaultA));
 
-    // === 5. Pro tip — FIXED for Vercel (uses direct file path) ===
+    // 5. Pro Tip — FIXED matching with aliases (drop-in replacement)
 let proTip = "Both drivers can improve situational awareness.";
 
 try {
-  // This works 100% reliably on Vercel serverless functions
-  const tipPath = path.join(process.cwd(), 'public', 'tips2.txt');
-  const text = fs.readFileSync(tipPath, 'utf8');
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+  const tipRes = await fetch(`${baseUrl}/tips2.txt`, { signal: controller.signal });
+  if (tipRes.ok) {
+    const lines = (await tipRes.text()).split('\n').map(l => l.trim()).filter(l => l.includes('|'));
 
-  const lines = text
-    .split('\n')
-    .map(l => l.trim())
-    .filter(l => l.includes('|'));
+    // NEW: Alias map for smarter matching (add more as needed)
+    const aliasMap = {
+      "unsafe rejoin": ["rejoin", "re-join", "rejoining", "came back on", "returned to track", "unsafe rejoin"],
+      "divebomb": ["divebomb", "dive bomb", "late lunge", "dive"],
+      "weave block": ["weave", "block", "defending", "defense"],
+      "brake test": ["brake test", "brake check", "brake checked"],
+      "netcode": ["netcode", "lag", "teleport", "ghost"],
+      "racing incident": ["racing incident", "no fault", "50/50"],
+      // Add for other types, e.g. "punt": ["punt", "rear end", "shunt"]
+    };
 
-  // Smart matching: incident key + common aliases
-  const searchTerms = [
-    incidentKey,
-    userType.toLowerCase().replace(/[^a-z]/g, ' '),
-    "rejoin", "re-join", "rejoining", "unsafe rejoin", "came back on",
-    "divebomb", "dive", "late lunge",
-    "brake test", "brake check",
-    "netcode", "lag", "teleport"
-  ];
+    const searchTerms = aliasMap[incidentKey] || [incidentKey];
+    if (humanInput) searchTerms.push(humanInput.toLowerCase().split(' ')[0]);
 
-  const candidates = lines.filter(line =>
-    searchTerms.some(term => line.toLowerCase().includes(term))
-  );
+    const candidates = lines.filter(l => searchTerms.some(term => l.toLowerCase().includes(term)));
 
-  if (candidates.length > 0) {
-    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-    proTip = chosen.split('|')[0].trim();
+    if (candidates.length > 0) {
+      proTip = candidates[Math.floor(Math.random() * candidates.length)].split('|')[0].trim();
+    }
   }
 } catch (e) {
-  console.warn("Pro tip failed to load:", e.message);
-  // Keep default
+  console.warn("Tips load failed:", e.message);
 }
 
     // 6. Car roles
