@@ -108,10 +108,35 @@ export default async function handler(req, res) {
         for (const row of parsed) {
           if (!row.title) continue;
           const rowText = `${row.title} ${row.reason || ''} ${row.ruling || ''}`.toLowerCase();
+          
           let score = 0;
-          if (rowText.includes(incidentKey)) score += 10;
-          if (humanInput && rowText.includes(humanInput.toLowerCase().substring(0, 30))) score += 8;
-          if (effectiveTitle && rowText.includes(effectiveTitle.toLowerCase().substring(0, 30))) score += 5;
+
+        // 1. Strong match on incident key + known synonyms
+        const keyTerms = {
+          "vortex exit": ["vortex", "draft lift", "vortex of danger", "exit vortex"],
+          "divebomb": ["divebomb", "dive bomb", "late lunge", "dive"],
+          "unsafe rejoin": ["rejoin", "re-joined", "came back on", "returned to track"],
+          "brake test": ["brake test", "brake check", "brake checked"],
+          "weave block": ["weave", "block", "blocking", "defending move"]
+          // add more only if you want — not required
+        };
+        const searchTerms = keyTerms[incidentKey] || [incidentKey];
+
+        if (searchTerms.some(t => rowText.includes(t))) score += 15;
+
+        // 2. Title match — much more forgiving
+        if (effectiveTitle) {
+          const titleLower = effectiveTitle.toLowerCase();
+          if (row.title && row.title.toLowerCase().includes(titleLower)) score += 20;
+          else if (rowText.includes(titleLower)) score += 8;
+        }
+
+        // 3. Steward notes — full text, not just first 30 chars
+        if (humanInput) {
+          const notesLower = humanInput.toLowerCase();
+          if (rowText.includes(notesLower)) score += 12;
+        }
+          
           if (score > 0) matches.push({ ...row, score });
         }
 
