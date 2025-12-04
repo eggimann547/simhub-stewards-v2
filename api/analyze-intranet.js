@@ -215,7 +215,7 @@ export default async function handler(req, res) {
       ruling: m.ruling || "No ruling recorded",
       reason: m.reason || "No reason recorded",
       faultA: parseFloat(m.fault_pct_driver_a) || 50,
-      thread: m.thread_id ? `https://reddit.com/r/simracingstewards/comments/${m.thread_id}/` : null
+      thread: m.thread_id ? `https://old.reddit.com/r/simracingstewards/comments/${m.thread_id}/` : null
     }));
 
     // 6. Car roles (unchanged)
