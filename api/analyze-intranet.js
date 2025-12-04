@@ -96,7 +96,7 @@ let precedentCases = [];
 let confidence = "Medium";
 
 try {
-  const curatedPath = path.join(process.cwd(), 'public', 'precedents_curated.csv');
+  const curatedPath = path.join(process.cwd(), 'public', 'precedents_real.csv');
   const text = fs.readFileSync(curatedPath, 'utf8');
   const parsed = Papa.parse(text, { header: true }).data;
 
