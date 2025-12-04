@@ -106,8 +106,7 @@ export default function Home() {
             <option>Divebomb / Late lunge</option>
             <option>Weave / Block / Defending move</option>
             <option>Unsafe rejoin</option>
-            <option>Vortex exit / Draft lift-off</option>  {/* Keep existing for backward compat */}
-            <option>Vortex of Danger / Draft lift-off</option>  {/* ← NEW: Explicit for searches */}
+            <option>Vortex of Danger</option>  {/* Consolidate all Vortex of Danger options */}
             <option>Netcode / Lag / Teleport</option>
             <option>Used as a barrier / Squeeze</option>
             <option>Pit-lane incident</option>
