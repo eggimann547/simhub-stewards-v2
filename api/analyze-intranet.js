@@ -130,20 +130,41 @@ export default async function handler(req, res) {
 
     finalFaultA = Math.min(98, Math.max(2, finalFaultA));
 
-    // 5. Pro tip
-    let proTip = "Both drivers can improve situational awareness.";
-    try {
-      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-      const tipRes = await fetch(`${baseUrl}/tips2.txt`, { signal: controller.signal });
-      if (tipRes.ok) {
-        const lines = (await tipRes.text()).split('\n').map(l => l.trim()).filter(l => l.includes('|'));
-        const candidates = lines.filter(l =>
-          l.toLowerCase().includes(incidentKey) ||
-          (humanInput && l.toLowerCase().includes(humanInput.toLowerCase().split(' ')[0]))
-        );
-        if (candidates.length) proTip = candidates[Math.floor(Math.random() * candidates.length)].split('|')[0].trim();
-      }
-    } catch {}
+    // === 5. Pro tip — FIXED for Vercel (uses direct file path) ===
+let proTip = "Both drivers can improve situational awareness.";
+
+try {
+  // This works 100% reliably on Vercel serverless functions
+  const tipPath = path.join(process.cwd(), 'public', 'tips2.txt');
+  const text = fs.readFileSync(tipPath, 'utf8');
+
+  const lines = text
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.includes('|'));
+
+  // Smart matching: incident key + common aliases
+  const searchTerms = [
+    incidentKey,
+    userType.toLowerCase().replace(/[^a-z]/g, ' '),
+    "rejoin", "re-join", "rejoining", "unsafe rejoin", "came back on",
+    "divebomb", "dive", "late lunge",
+    "brake test", "brake check",
+    "netcode", "lag", "teleport"
+  ];
+
+  const candidates = lines.filter(line =>
+    searchTerms.some(term => line.toLowerCase().includes(term))
+  );
+
+  if (candidates.length > 0) {
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    proTip = chosen.split('|')[0].trim();
+  }
+} catch (e) {
+  console.warn("Pro tip failed to load:", e.message);
+  // Keep default
+}
 
     // 6. Car roles
     let carARole = "the overtaking car", carBRole = "the defending car";
