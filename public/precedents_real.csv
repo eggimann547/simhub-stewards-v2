@@ -5,8 +5,8 @@ incident_type,thread_id,title,youtube_url,ruling,reason,fault_a
 "Weave / Block / Defending move",hddpdtygf55g1,"Bruh....",https://youtu.be/hddpdtygf55g1,Defender Fault,"Illegal blocking move",80
 "Unsafe rejoin",uqep49oa785g1,"Got called “stupid” for this move",https://youtu.be/uqep49oa785g1,Rejoin Fault,"Unsafe rejoin across racing line",100
 "Unsafe rejoin",1abc123def456,"Rejoin Fault Example",https://youtu.be/1abc123def456,Rejoin Fault,"Forced avoidance on re-entry",95
-"Vortex of Danger",1def456ghi789,"Vortex Exit Contact",https://youtu.be/hxXHNF1Dgj4,Overtaker Fault,"Entered vortex blind spot",92
-"Vortex of Danger",1ghi789jkl012,"Draft Lift-Off Spin",https://youtu.be/hxXHNF1Dgj4,Overtaker Fault,"Lost downforce in draft",90
+"Vortex of Danger",1euj63d,"Vortex Exit Contact",https://youtu.be/hxXHNF1Dgj4,Overtaker Fault,"Entered vortex blind spot",92
+"Vortex of Danger",1euj63d,"Draft Lift-Off Spin",https://youtu.be/hxXHNF1Dgj4,Overtaker Fault,"Lost downforce in draft",90
 "Netcode / Lag / Teleport",1jkl012mno345,"Lag Teleport Incident",https://youtu.be/1jkl012mno345,Racing Incident,"Netcode artifact – no fault",0
 "Netcode / Lag / Teleport",1mno345pqr678,"Desync Rear-End",https://youtu.be/1mno345pqr678,Racing Incident,"Server lag – racing incident",0
 "Used as a barrier / Squeeze",1pqr678stu901,"Squeeze Into Wall",https://youtu.be/1pqr678stu901,Defender Fault,"Squeezed overtaker into barrier",90
