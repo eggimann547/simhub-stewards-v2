@@ -91,10 +91,12 @@ export default function Home() {
 
         <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto">
           <input
-            type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-            placeholder="Paste YouTube incident link..." 
-            className="w-full p-5 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-500 text-lg"
-          />
+          type="text" 
+          value={url} 
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="YouTube or Reddit link (e.g. r/simracingstewards post)" 
+          className="w-full p-5 border-2 border-gray-300 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-blue-500 text-lg"
+/>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
