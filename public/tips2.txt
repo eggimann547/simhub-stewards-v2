@@ -242,6 +242,7 @@ Stay in your lane in the pits — weaving or blocking in pit lane is a penalty |
 // START-LINE CHAOS / T1 PILE-UP
 T1 incidents with low overlap are usually racing incidents — survive first, overtake later | t1 chaos | (Every sim racer ever)
 Brake 15–20 m earlier into T1 on lap 1 — survival > hero moves | t1 chaos | (Stewards AI)
+It's early in the race and there's chaos all around. You need to have better awareness and more survival instinct. | t1 chaos | (tsrs)
 
 // INTENTIONAL WRECK / REVENGE
 Any deliberate contact off the racing line is intentional wrecking — expect a ban | intentional wreck | (All league CoCs)
