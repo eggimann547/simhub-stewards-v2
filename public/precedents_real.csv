@@ -2,3 +2,4 @@ incident_type,thread_id,title,ruling,reason,fault_a
 "Vortex of Danger","1euj63d","I know I screwed up in the Vortex of Danger but...",Overtaker Fault,"Entered blind spot with insufficient overlap",92
 "Divebomb / Late lunge","1f9z0z1","Late divebomb T1 — who’s at fault?",Overtaker Fault,"No overlap at apex — classic divebomb",95
 "Unsafe rejoin","1c6w0w0","Rejoined across racing line",Rejoin Fault,"Did not wait for safe gap",100
+"Unsafe rejoin","1mpvzn8",Driver was still in the middle of spinning then actively rejoining",Rejoin Fault,"Hold your brakes",100
