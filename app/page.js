@@ -222,23 +222,18 @@ export default function Home() {
                 <h3 className="text-2xl font-bold text-green-700 dark:text-green-300 mb-6 text-center">
                   Precedent Cases (Real Past Incidents)
                 </h3>
-                {result.precedents.map((p, i) => (
-                  <div key={i} className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl shadow border">
-                    {p.video && (
-                    <div className="mb-4 -mx-6 -mt-6 rounded-t-xl overflow-hidden">
-                    <iframe
-                    width="100%"
-                    height="315"
-                    src={`https://www.youtube-nocookie.com/embed/${p.video.split('v=')[1]?.split('&')[0] || p.video.split('/').pop()}`}
-                    title={`Precedent Video ${i + 1}`}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full"
-                    loading="lazy"
-                    ></iframe>
-                    </div>
-)}
+               {p.thread && (
+              <div className="mb-6 -mx-6 -mt-6 rounded-t-xl overflow-hidden border-b-4 border-gray-300 dark:border-gray-600">
+              <iframe
+              src={p.thread}
+              title={`Original Reddit Thread — ${p.title}`}
+              className="w-full h-96"
+              frameBorder="0"
+              allowFullScreen
+              loading="lazy"
+              ></iframe>
+              </div>
+            )}
                     <h4 className="text-xl font-bold mb-2">{p.title}</h4>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       <strong>Ruling:</strong> {p.ruling} | <strong>Fault A:</strong> {p.faultA}%
