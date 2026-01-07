@@ -144,7 +144,7 @@ export default function Home() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Car A (e.g. Red/White Ferrari)</label>
+                <label className="block text-sm font-medium mb-2">Car A (e.g. Red/White Ferrari- usually Overtaking Car)</label>
                 <input
                   type="text"
                   value={carA}
@@ -154,7 +154,7 @@ export default function Home() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Car B</label>
+                <label className="block text-sm font-medium mb-2">Car B (defending)</label>
                 <input
                   type="text"
                   value={carB}
