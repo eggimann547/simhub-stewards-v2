@@ -1,0 +1,65 @@
+incident_type,thread_id,title,youtube_url,ruling,reason,fault_a
+Unsafe rejoin,u9rwqa,Unsafe re-entry ruins someone's race :(,,Rejoin Fault,Drivers on the racing surface have the right-of-way. You must wait for a clear gap before re-entering.,100
+Unsafe rejoin,18vneqo,Is this unsafe rejoin reportable?,,Rejoin Fault,Hold your brakes and join safely when traffic has passed. Don't try to jump back into the race immediately,100
+Divebomb / Late lunge,1ix851f,It was definitely a lunge but I’m unsure if it was illegal or not,,Overtaker Fault,The car ahead was already turning in, and you had no significant overlap. At that point they have no obligation to leave you space.,90
+Punt / Rear-end under braking,1hr86v2,I Am The White Acura That Get's Punted,,Overtaker Fault,Failed to brake in time or leave sufficient gap under braking.,90
+Crowd-strike / Accordion effect,1pf9k5f,Is anyone to blame for this? was it preventable?,,Following Driver Fault,Did not anticipate braking chain reaction in a pack and rear-ended the car ahead.,95
+Brake check / Brake test,1g5unky,2 Incidents on the same race, both guys said I brake tested them,,Lead Driver Fault,Abrupt and unnecessary heavy braking with a car close behind to cause contact—classic brake check.,100
+Brake check / Brake test,1jn8q28,Who's at fault? Did he brake-check me, or was I not paying attention?,,Lead Driver Fault,No reason to brake that hard on a straight; intentional slowdown to punish or cause collision.,100
+Brake check / Brake test,1ivciek,Brake check?,,Lead Driver Fault,Full brake application instead of lift—dangerous and avoidable.,95
+Blocking / Weaving,1bpxnb0,Where is the line between weaving/ breaking tow and blocking?,,Defender Fault,More than one move per straight constitutes illegal blocking in most rulesets.,85
+Blocking / Weaving,1lgzo31,Would this count as blocking even though there is little movement ?,,Defender Fault,Multiple direction changes to prevent overtake—reactionary weaving is blocking.,90
+Blocking / Weaving,1nnbpue,Great defending or blocking?,,Defender Fault,Weaving excessively rather than one clean defensive move.,80
+T1 chaos / Lap 1 pileup,1q1vf8a,Which driver(s) would give penalties to for this T1 chaos?,,Shared Fault / Racing Incident,Typical lap 1 over-optimism with insufficient space—multiple drivers diving without overlap.,50
+T1 chaos / Lap 1 pileup,1jtfydg,Lap 1, T1 pile up. Who's at fault?,,Racing Incident,No single driver predominantly at fault; chain reaction from aggressive positioning on lap 1.,0
+T1 chaos / Lap 1 pileup,1pvl9gq,Who's at fault? This created a massive pileup,,Primary Overtaker Fault,Optimistic dive into T1 with low overlap triggered the chain—survive lap 1 first.,75
+Racing Incident / 50-50,1i3jwnj,Is this a brake check or just a racing incident?,,Racing Incident,Both drivers made reasonable moves that unfortunately collided—no clear predominant fault.,0
+Racing Incident / 50-50,1pzutoq,I'm at fault for T1, but was the pit maneuver a racing incident?,,Racing Incident (for secondary contact),Contact resulted from normal wheel-to-wheel racing with shared responsibility.,0
+Divebomb / Late lunge,1q5djrx,Stupid Divebomb? Or Racing Incident?,,Overtaker Fault,Lined up and punted the car ahead with no overlap—classic divebomb/punt, not a racing incident.,95
+Unsafe rejoin,1q3vck0,Is this my fault or is this an unsafe rejoin? I would appreciate if u guys could tell,,Rejoin Fault,Rejoined without waiting for a clear gap, impeding on-track traffic.,100
+Unsafe rejoin,1q54da7,Who is at fault??,,Rejoin Fault,Unsafe rejoin directly into the racing line—on-track drivers have priority.,100
+Multiclass incident,1q4nnl2,I'm new to Multiclass Racing so i wanna know how is a fault here so I can avoid,,Shared Fault,Faster class dove late; slower class could have left more room, but primary on diver.,70
+Side-by-side contact,1pvg6jj,Who's at fault, I'm the green/purple car on the outside,,Racing Incident,Typical side-by-side where both could have done more to avoid light contact.,0
+Racing Incident / 50-50,1q5vpts,was this an racing incident?,,Racing Incident,Opponent misjudged braking but POV held line—no predominant fault.,0
+Punt / Rear-end under braking,1q0y69v,Got shunted at the last turn of Lap 1 after previous contact. Thoughts?,,Following Driver Fault,Punted from several cars back with no overlap—aggressive and avoidable.,90
+Blue flag incident,1q3p3ip,Blue flag incident, corner exit – who's at fault?,,Lapped Driver Fault,Failed to yield properly to faster car on blue flags.,85
+Racing Incident / 50-50,1q5o9zc,is anybody at fault? or just a racing incident? (im the ferrari),,Racing Incident,Minor contact in wheel-to-wheel with both giving room—no clear blame.,0
+T1 chaos / Lap 1 pileup,1pxgi4f,T1 lap 1 crazy 3 wide, whos at fault?,,Shared Fault / Racing Incident,Over-optimistic 3-wide into T1—survival instinct needed on lap 1.,50
+Side-by-side contact,1q54jh9,Who is at fault here,,Racing Incident,McLaren turned in with overlap present—normal racing contact.,0
+Divebomb / Late lunge,1q5fouq,Who's at fault? (im the aston martin),,Overtaker Fault,Previous contact aside, aggressive move caused loss of podium positions.,80
+Blocking / Weaving,1q3bj68,Who's at fault here? I feel like I left him enough space but he went for a non,,Defender Fault,Multiple moves or squeezing without leaving space—illegal blocking.,85
+Brake check / Brake test,1q1v7fe,who's at fault? Here was my driving unpredictable and did I break too,,Lead Driver Fault,Abrupt braking with no reason—potential brake test.,95
+Racing Incident / 50-50,1q21cn7,Who's at fault here?,,Racing Incident,Minor contact when both giving room—definition of racing incident.,0
+Divebomb / Late lunge,1q3irml,Am i wrong? This guy messaged me after the race and went off,,Overtaker Fault,Predictable divebomb plunge after prior contact—aggressive and avoidable.,90
+Racing Incident / 50-50,1q4soqj,Am I the idiot, as the #17 kindly referred to me after the incident?,,Racing Incident,Looked like turn-in but replay shows shared responsibility—no clear fault.,0
+Punt / Rear-end under braking,1pynqkt,Who is at fault for both the first and second incident?,,Following Driver Fault,Continued chaos after earlier punt—aggressive driving.,90
+Side-by-side contact,1q1bdn5,Who is at fault, inside driver or outside driver? Or is it just a racing incident?,,Racing Incident,Off-track rejoin debate but contact shared—both could yield more.,0
+Blocking / Weaving,1pyg6w2,Who's at fault? I'm the McLaren and I want to know whether I blocked,,Defender Fault,Ahead on line but potential over-defense—even expecting divebomb doesn't allow blocking.,75
+Move under braking,1q3852e,I got reported for 'Turning under Braking' in LFM?,,Defender Fault,Turned in while braking with car alongside—punishable move under braking.,90
+Racing Incident / 50-50,1py4qo7,Blue claims snap oversteer. Racing incident or vehicular homicide?,,Racing Incident,Snap oversteer claim but contact unavoidable—no intent.,0
+Divebomb / Late lunge,1pz43y0,Who's at fault?,,Overtaker Fault,Aggressive messaging aside, dive caused contact.,85
+Over-aggressive defense,1pgkx55,Who's at fault?,,Defender Fault,Carried too much speed defending—never making the corner.,80
+Unsafe rejoin,1q03vfb,Unsafe rejoin or intentional wreck?,,Rejoin Fault,Rejoined blindly over sloped corner—unsafe, regardless of intent.,100
+Unsafe rejoin,1i4t3x5,I'm fully admitting fault for this but just wanted to know your guys opinion,,Rejoin Fault,Spin recovery led to jerking back—unsafe rejoin.,95
+Divebomb / Late lunge,1jtxdlm,Apparently this is my fault as I shouldve gone right? I personally think he,,Overtaker Fault,Failed to leave space on aggressive move.,90
+Unsafe rejoin,1kqo86r,Im new. Whos fault? Ofc They said mine.,,Rejoin Fault,Rejoin from off-track without clear lane—common rookie issue.,100
+Over-aggressive defense,1itizqm,Based on responses to my last post here I think I may be at fault here?,,Defender Fault,Suboptimal line defense squeezed opponent.,85
+Punt / Rear-end under braking,1k8n0zp,Am I at fault for these incidents? Im POV,,Following Driver Fault,Blocking then pitting off, plus unsafe elements.,90
+Vortex of danger,17tsq7j,Did I enter the vortex of danger, or could he have left more room?,,Overtaker Fault,Entered the lead car's blind spot with insufficient overlap—classic vortex of danger scenario.,90
+Vortex of danger,1bwu4db,Both drivers think they are to blame. Vortex of danger or not leaving the space?!,,Overtaker Fault,Dove into the vortex (blind spot) without full overlap; lead car not obligated to leave extra room.,85
+Vortex of danger,1kfdih8,Vortex of danger? I am the passing car.,,Overtaker Fault,Failed to clear the overtake properly and turned in as if the lead car wasn't there.,95
+Vortex of danger,18zyj1l,Live laugh love the vortex of danger.,,Overtaker Fault,Positioned in the vortex of danger (blind spot)—fault on the overtaker for poor awareness.,90
+Vortex of danger,1ifr0k2,Vortex of Danger, or Outright Bad GTP Driving?,,Overtaker Fault,Jumped into the vortex; bad driving rather than lead car fault.,95
+Revenge / Intentional wreck,1o0u0yp,I got a successful Intentional wrecking protest against me for this. Im the POV,,Intentional Wrecking,Contact after frustration—protest upheld as retaliation.,100
+Revenge / Intentional wreck,1pt732s,Was the retaliation deserved? Also am i at fault for the first contact?,,Intentional Wrecking (second contact),Retaliation never justified; second contact deliberate.,100
+Revenge / Intentional wreck,1puyisn,My account was flagged for intentional wrecking. Can you guess which car,,Intentional Wrecking,Upset after bump and deliberate contact—clear retaliation.,100
+Revenge / Intentional wreck,1ifbqfa,Does the second contact count as Retaliation/Intentional wrecking?,,Intentional Wrecking,Overreaction with deliberate contact after earlier incident.,100
+Revenge / Intentional wreck,1pegrj9,Block and revenge crash,,Intentional Wrecking (final contact),Inexcusable deliberate wreck at the end.,100
+Netcode / Lag incident,1q3vck0,Is this my fault or is this an unsafe rejoin? (Note: comments mention lag/desync),,No Fault (Netcode),Apparent teleport/rejoin due to desync—common netcode issue, no blame.,0
+Netcode / Lag incident,1pzutoq,I'm at fault for T1, but was the pit maneuver a racing incident? (secondary netcode mentions in similar threads),,No Fault (Netcode),Sudden movement likely lag/teleport—blame the servers, not drivers.,0
+Racing Incident / 50-50,19f08qy,Was this anyone's fault? Vortex of Danger? Racing Incident?,,Racing Incident,Reasonable moves collided—no predominant fault.,0
+Racing Incident / 50-50,1q5vpts,was this an racing incident?,,Racing Incident,Misjudged but both raced fairly—no clear blame.,0
+Racing Incident / 50-50,1q21cn7,Who's at fault here?,,Racing Incident,Minor contact with shared space—true racing incident.,0
+Used as a barrier / Squeeze,1bpxnb0,Where is the line between weaving/ breaking tow and blocking? (squeeze discussions),,Defender Fault,Squeezed attacker toward wall without proper space—using car as barrier.,90
+Used as a barrier / Squeeze,1pyg6w2,Who's at fault? I'm the McLaren and I want to know whether I blocked (squeeze element),,Defender Fault,Over-defense squeezed opponent off-line.,85
+Used as a barrier / Squeeze,1pgkx55,Who's at fault? (squeeze toward wall),,Defender Fault,Carried speed to squeeze rather than leave room.,90
