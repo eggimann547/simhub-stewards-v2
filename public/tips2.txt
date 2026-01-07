@@ -321,3 +321,6 @@ When recovering from a penalty or incident, prioritize clean overtakes and avoid
 Be cautious when following a faster driver; maintain a safe distance during overtaking attempts to avoid unintended contact. | overtaking | (Reddit)
 If pushing another driver on a straight to close a gap, ensure it’s done safely to prevent forcing them off track or into a mistake. | overtaking | (Reddit)
 Analyze incidents post-race to understand fault and improve decision-making in future battles, especially in tight racing situations. | mental | (Reddit)
+Be predictable in your driving to avoid ruining races with last-minute line changes; make early decisions on your racing line. | general | (Reddit)
+Use lift and coast into corners during endurance races to facilitate safe passes by faster cars or to set up overtakes on corner exits, while also saving fuel. | overtaking | (Reddit)
+
